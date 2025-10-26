@@ -2,10 +2,18 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 require('dotenv').config();
+
+// Import database connection and models
+const connectDB = require('./config/database');
+const { User, Submission } = require('./models');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Connect to MongoDB
+connectDB();
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -23,6 +31,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Import routes
+const authRoutes = require('./routes/auth');
+const submissionRoutes = require('./routes/submissions');
+const userRoutes = require('./routes/users');
+
 // API routes
 app.get('/api', (req, res) => {
   res.json({
@@ -30,10 +43,20 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      api: '/api'
+      auth: '/api/auth',
+      submissions: '/api/submissions',
+      users: '/api/users'
     }
   });
 });
+
+// Mount routes
+app.use('/api/auth', authRoutes);
+app.use('/api/submissions', submissionRoutes);
+app.use('/api/users', userRoutes);
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, process.env.UPLOAD_PATH || './uploads')));
 
 // 404 handler
 app.use('*', (req, res) => {
