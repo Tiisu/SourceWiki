@@ -16,7 +16,7 @@ const submissionSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    maxlength: 100
+    maxlength: 200
   },
   country: {
     type: String,
@@ -26,7 +26,7 @@ const submissionSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['primary', 'secondary', 'unreliable']
+    enum: ['primary', 'secondary', 'not_reliable']
   },
   status: {
     type: String,
@@ -72,7 +72,7 @@ const submissionSchema = new mongoose.Schema({
   },
   reliability: {
     type: String,
-    enum: ['credible', 'unreliable']
+    enum: ['credible', 'unreliable', 'needs_review']
   },
   // Additional metadata
   fileSize: {
@@ -133,49 +133,5 @@ submissionSchema.index({ title: 'text', publisher: 'text' }); // Text search
 // Compound indexes
 submissionSchema.index({ country: 1, status: 1 });
 submissionSchema.index({ submitterId: 1, status: 1 });
-
-// Virtual for submission age in days
-submissionSchema.virtual('ageInDays').get(function() {
-  return Math.floor((Date.now() - this.submittedDate) / (1000 * 60 * 60 * 24));
-});
-
-// Static method to get submissions by country
-submissionSchema.statics.findByCountry = function(countryCode, status = null) {
-  const query = { country: countryCode };
-  if (status) query.status = status;
-  return this.find(query).populate('submitterId', 'username email').populate('verifierId', 'username email');
-};
-
-// Static method to get user's submission stats
-submissionSchema.statics.getUserStats = async function(userId) {
-  const stats = await this.aggregate([
-    { $match: { submitterId: new mongoose.Types.ObjectId(userId) } },
-    {
-      $group: {
-        _id: '$status',
-        count: { $sum: 1 }
-      }
-    }
-  ]);
-  
-  const result = { pending: 0, verified: 0, rejected: 0, total: 0 };
-  stats.forEach(stat => {
-    result[stat._id] = stat.count;
-    result.total += stat.count;
-  });
-  
-  return result;
-};
-
-// Instance method to add review history entry
-submissionSchema.methods.addReviewEntry = function(reviewerId, action, notes = '') {
-  this.reviewHistory.push({
-    reviewerId,
-    action,
-    notes,
-    date: new Date()
-  });
-  return this.save();
-};
 
 module.exports = mongoose.model('Submission', submissionSchema);

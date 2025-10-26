@@ -2,12 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 require('dotenv').config();
 
-// Import database connection and models
+// Import database connection
 const connectDB = require('./config/database');
-const { User, Submission } = require('./models');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,32 +29,28 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const submissionRoutes = require('./routes/submissions');
-const userRoutes = require('./routes/users');
+// Import admin routes
+const adminRoutes = require('./routes/adminRoutes');
+const countryRoutes = require('./routes/countryRoutes');
+const systemRoutes = require('./routes/systemRoutes');
 
 // API routes
 app.get('/api', (req, res) => {
   res.json({
-    message: 'Welcome to WikiMake API',
+    message: 'Welcome to WikiSourceVerifier API',
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      auth: '/api/auth',
-      submissions: '/api/submissions',
-      users: '/api/users'
+      admin: '/api/admin',
+      models: 'MongoDB models available for team development'
     }
   });
 });
 
-// Mount routes
-app.use('/api/auth', authRoutes);
-app.use('/api/submissions', submissionRoutes);
-app.use('/api/users', userRoutes);
-
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, process.env.UPLOAD_PATH || './uploads')));
+// Mount admin routes
+app.use('/api/admin', adminRoutes);
+app.use('/api/admin', countryRoutes);
+app.use('/api/admin', systemRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
