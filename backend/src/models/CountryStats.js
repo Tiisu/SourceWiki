@@ -1,10 +1,9 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const countryStatsSchema = new mongoose.Schema({
   countryCode: {
     type: String,
     required: true,
-    unique: true,
     length: 2,
     uppercase: true
   },
@@ -86,7 +85,7 @@ const countryStatsSchema = new mongoose.Schema({
 });
 
 // Indexes
-countryStatsSchema.index({ countryCode: 1 });
+countryStatsSchema.index({ countryCode: 1 }, { unique: true });
 countryStatsSchema.index({ 'statistics.totalSubmissions': -1 });
 countryStatsSchema.index({ 'statistics.verifiedSources': -1 });
 
@@ -115,7 +114,7 @@ countryStatsSchema.methods.updateStats = async function() {
   // Update from aggregation
   stats.forEach(stat => {
     switch(stat._id) {
-      case 'verified':
+      case 'approved':
         this.statistics.verifiedSources = stat.count;
         break;
       case 'rejected':
@@ -137,7 +136,7 @@ countryStatsSchema.methods.updateStats = async function() {
 
   this.statistics.activeVerifiers = await User.countDocuments({
     country: this.countryCode,
-    role: 'country_verifier',
+    role: 'verifier',
     isActive: true
   });
 
@@ -176,4 +175,6 @@ countryStatsSchema.methods.addActivity = function(type, userId, description, sub
   return this.save();
 };
 
-module.exports = mongoose.model('CountryStats', countryStatsSchema);
+const CountryStats = mongoose.model('CountryStats', countryStatsSchema);
+
+export default CountryStats;

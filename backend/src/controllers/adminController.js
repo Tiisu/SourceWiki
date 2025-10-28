@@ -1,4 +1,6 @@
-const { User, Submission, CountryStats } = require('../models');
+import User from '../models/User.js';
+import Submission from '../models/Submission.js';
+import CountryStats from '../models/CountryStats.js';
 
 class AdminController {
   // ============================================================================
@@ -27,9 +29,9 @@ class AdminController {
           { $limit: 10 }
         ]),
         Submission.find()
-          .populate('submitterId', 'username country')
-          .populate('verifierId', 'username country')
-          .sort({ submittedDate: -1 })
+          .populate('submitter', 'username country')
+          .populate('verifier', 'username country')
+          .sort({ createdAt: -1 })
           .limit(50),
         CountryStats.find()
           .sort({ 'statistics.verifiedSources': -1 })
@@ -76,7 +78,7 @@ class AdminController {
       startDate.setDate(startDate.getDate() - days);
       
       // Build match filters
-      const matchFilter = { submittedDate: { $gte: startDate } };
+      const matchFilter = { createdAt: { $gte: startDate } };
       if (country) matchFilter.country = country;
       
       const [submissionTrends, verificationSpeed] = await Promise.all([
@@ -86,7 +88,7 @@ class AdminController {
           {
             $group: {
               _id: {
-                date: { $dateToString: { format: '%Y-%m-%d', date: '$submittedDate' } },
+                date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
                 status: '$status'
               },
               count: { $sum: 1 }
@@ -100,15 +102,15 @@ class AdminController {
           {
             $match: {
               ...matchFilter,
-              status: { $in: ['verified', 'rejected'] },
-              verifiedDate: { $exists: true }
+              status: { $in: ['approved', 'rejected'] },
+              verifiedAt: { $exists: true }
             }
           },
           {
             $project: {
               daysToVerify: {
                 $divide: [
-                  { $subtract: ['$verifiedDate', '$submittedDate'] },
+                  { $subtract: ['$verifiedAt', '$createdAt'] },
                   1000 * 60 * 60 * 24
                 ]
               },
@@ -169,7 +171,7 @@ class AdminController {
       const [users, total] = await Promise.all([
         User.find(filter)
           .select('-password')
-          .sort({ joinDate: -1 })
+          .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit),
         User.countDocuments(filter)
@@ -178,12 +180,12 @@ class AdminController {
       // Get submission stats for each user
       const userIds = users.map(user => user._id);
       const submissionStats = await Submission.aggregate([
-        { $match: { submitterId: { $in: userIds } } },
+        { $match: { submitter: { $in: userIds } } },
         {
           $group: {
-            _id: '$submitterId',
+            _id: '$submitter',
             total: { $sum: 1 },
-            verified: { $sum: { $cond: [{ $eq: ['$status', 'verified'] }, 1, 0] } },
+            approved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
             pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
             rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } }
           }
@@ -195,7 +197,7 @@ class AdminController {
         const stats = submissionStats.find(stat => stat._id.toString() === user._id.toString());
         return {
           ...user.toObject(),
-          submissionStats: stats || { total: 0, verified: 0, pending: 0, rejected: 0 }
+          submissionStats: stats || { total: 0, approved: 0, pending: 0, rejected: 0 }
         };
       });
       
@@ -250,8 +252,8 @@ class AdminController {
         });
       }
       
-      // If role changed to country_verifier, update CountryStats
-      if (updates.role === 'country_verifier') {
+      // If role changed to verifier, update CountryStats
+      if (updates.role === 'verifier') {
         const countryStats = await CountryStats.getOrCreate(user.country, '');
         if (!countryStats.verifiers.find(v => v.userId.toString() === userId)) {
           countryStats.verifiers.push({ userId: user._id });
@@ -329,8 +331,6 @@ class AdminController {
       if (req.query.status) filter.status = req.query.status;
       if (req.query.category) filter.category = req.query.category;
       if (req.query.country) filter.country = req.query.country;
-      if (req.query.reliability) filter.reliability = req.query.reliability;
-      if (req.query.flagged === 'true') filter.priority = 'high';
       if (req.query.search) {
         filter.$or = [
           { title: { $regex: req.query.search, $options: 'i' } },
@@ -341,9 +341,9 @@ class AdminController {
       
       const [submissions, total] = await Promise.all([
         Submission.find(filter)
-          .populate('submitterId', 'username email country')
-          .populate('verifierId', 'username email country')
-          .sort({ submittedDate: -1 })
+          .populate('submitter', 'username email country')
+          .populate('verifier', 'username email country')
+          .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit),
         Submission.countDocuments(filter)
@@ -370,7 +370,7 @@ class AdminController {
   static async overrideSubmission(req, res) {
     try {
       const submissionId = req.params.id;
-      const { status, reliability, adminNotes, reason } = req.body;
+      const { status, adminNotes, reason } = req.body;
       
       const submission = await Submission.findById(submissionId);
       if (!submission) {
@@ -382,23 +382,13 @@ class AdminController {
       
       // Store original values for audit
       const originalStatus = submission.status;
-      const originalReliability = submission.reliability;
-      const originalVerifier = submission.verifierId;
+      const originalVerifier = submission.verifier;
       
       // Update submission
       submission.status = status;
-      if (reliability) submission.reliability = reliability;
-      submission.verifierId = req.user._id;
-      submission.verifiedDate = new Date();
+      submission.verifier = req.user._id;
+      submission.verifiedAt = new Date();
       submission.verifierNotes = adminNotes;
-      
-      // Add admin override to review history
-      submission.reviewHistory.push({
-        reviewerId: req.user._id,
-        action: 'admin_override',
-        notes: `Admin override: ${reason}. Original: ${originalStatus}/${originalReliability} by ${originalVerifier}`,
-        date: new Date()
-      });
       
       await submission.save();
       
@@ -411,47 +401,6 @@ class AdminController {
       res.status(500).json({ 
         error: 'Internal Server Error',
         message: 'Failed to override submission' 
-      });
-    }
-  }
-
-  static async flagSubmission(req, res) {
-    try {
-      const submissionId = req.params.id;
-      const { reason, priority = 'high' } = req.body;
-      
-      const submission = await Submission.findByIdAndUpdate(
-        submissionId,
-        {
-          priority,
-          $push: {
-            reviewHistory: {
-              reviewerId: req.user._id,
-              action: 'flagged',
-              notes: `Flagged by admin: ${reason}`,
-              date: new Date()
-            }
-          }
-        },
-        { new: true }
-      );
-      
-      if (!submission) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'Submission not found' 
-        });
-      }
-      
-      res.json({ 
-        message: 'Submission flagged successfully', 
-        submission 
-      });
-    } catch (error) {
-      console.error('Submission flag error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to flag submission' 
       });
     }
   }
@@ -469,15 +418,6 @@ class AdminController {
         });
       }
       
-      // Add deletion record to review history before deleting
-      submission.reviewHistory.push({
-        reviewerId: req.user._id,
-        action: 'deleted',
-        notes: `Deleted by admin: ${reason}`,
-        date: new Date()
-      });
-      
-      await submission.save();
       await Submission.findByIdAndDelete(submissionId);
       
       res.json({ message: 'Submission deleted successfully' });
@@ -491,4 +431,4 @@ class AdminController {
   }
 }
 
-module.exports = AdminController;
+export default AdminController;

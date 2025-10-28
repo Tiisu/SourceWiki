@@ -10,6 +10,10 @@ import errorHandler from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import countryRoutes from './routes/countryRoutes.js';
+import systemRoutes from './routes/systemRoutes.js';
+import reportsRoutes from './routes/reportsRoutes.js';
 
 // Load env vars
 dotenv.config();
@@ -77,6 +81,10 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/countries', countryRoutes);
+app.use('/api/system', systemRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
