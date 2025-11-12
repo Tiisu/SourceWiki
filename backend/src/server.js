@@ -1,5 +1,4 @@
 import express from 'express';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -14,9 +13,9 @@ import adminRoutes from './routes/adminRoutes.js';
 import countryRoutes from './routes/countryRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
 import reportsRoutes from './routes/reportsRoutes.js';
+//importing the config file where all the environment variables are stored and loaded
+import config from './config/config.js';
 
-// Load env vars
-dotenv.config();
 
 // Connect to database
 connectDB();
@@ -109,7 +108,7 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
+const server = app.listen(config.port, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 
