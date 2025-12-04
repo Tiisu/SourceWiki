@@ -207,8 +207,10 @@ export const submissionApi = {
 
   delete: (id: string) => api.delete(`/submissions/${id}`),
 
-  verify: (id: string, status: string, verifierNotes?: string) =>
-    api.put(`/submissions/${id}/verify`, { status, verifierNotes }),
+  verify: (id: string, status: string, credibility?: string, verifierNotes?: string) => {
+    console.log('API verify call:', { id, status, credibility, verifierNotes });
+    return api.put(`/submissions/${id}/verify`, { status, credibility, verifierNotes });
+  },
 
   getPendingForCountry: (page = 1, limit = 20) =>
     api.get(`/submissions/pending/country?page=${page}&limit=${limit}`),

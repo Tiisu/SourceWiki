@@ -32,6 +32,13 @@ const submissionSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
+  credibility: {
+    type: String,
+    enum: ['credible', 'unreliable'],
+    required: function() {
+      return this.status === 'approved';
+    }
+  },
   submitter: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

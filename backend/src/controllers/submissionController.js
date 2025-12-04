@@ -219,7 +219,8 @@ export const deleteSubmission = async (req, res, next) => {
 // @access  Private (verifier, admin)
 export const verifySubmission = async (req, res, next) => {
   try {
-    const { status, verifierNotes } = req.body;
+    const { status, credibility, verifierNotes } = req.body;
+    console.log('Verification request:', { status, credibility, verifierNotes });
 
     let submission = await Submission.findById(req.params.id);
 
@@ -237,7 +238,26 @@ export const verifySubmission = async (req, res, next) => {
       });
     }
 
-    submission.status = status;
+    // Handle different verification outcomes
+    if (status === 'rejected') {
+      // Rejected submissions don't need credibility rating
+      submission.status = 'rejected';
+    } else if (status === 'approved' && credibility) {
+      // Approved with credibility rating
+      submission.status = 'approved';
+      submission.credibility = credibility;
+    } else if (status === 'approved' && !credibility) {
+      return res.status(400).json({
+        success: false,
+        message: 'Credibility rating is required for approved submissions'
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status provided'
+      });
+    }
+
     submission.verifier = req.user.id;
     submission.verifierNotes = verifierNotes;
     submission.verifiedAt = Date.now();
@@ -246,8 +266,10 @@ export const verifySubmission = async (req, res, next) => {
 
     // Award points to submitter if approved
     if (status === 'approved') {
+      // More points for credible sources
+      const points = credibility === 'credible' ? 25 : 10;
       await User.findByIdAndUpdate(submission.submitter, {
-        $inc: { points: 25 }
+        $inc: { points: points }
       });
     }
 
@@ -277,19 +299,22 @@ export const getPendingSubmissionsForCountry = async (req, res, next) => {
     const { page = 1, limit = 20 } = req.query;
     const skip = (page - 1) * limit;
 
-    const submissions = await Submission.find({
-      country: req.user.country,
-      status: 'pending'
-    })
+    // Build query based on user role
+    let query = { status: 'pending' };
+    
+    // If user is admin, show all pending submissions
+    // If user is verifier, show only their country's submissions
+    if (req.user.role !== 'admin') {
+      query.country = req.user.country;
+    }
+
+    const submissions = await Submission.find(query)
       .populate('submitter', 'username country')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
-    const total = await Submission.countDocuments({
-      country: req.user.country,
-      status: 'pending'
-    });
+    const total = await Submission.countDocuments(query);
 
     res.status(200).json({
       success: true,

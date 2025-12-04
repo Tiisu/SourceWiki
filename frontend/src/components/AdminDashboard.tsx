@@ -71,35 +71,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     
     setLoading(true);
     try {
-      // Load pending submissions for verifier's country
       if (user.role === 'verifier' || user.role === 'admin') {
-        const response = await submissionApi.getPendingForCountry();
+        // Load all submissions for admin (all countries) or verifier (their country)
+        const params = user.role === 'admin' ? {} : { country: user.country };
+        const response = await submissionApi.getAll(params);
         if (response.success) {
-          setSubmissions(response.submissions);
+          setSubmissions(response.submissions || response.data?.submissions || []);
         }
       }
     } catch (error) {
+      console.error('Failed to load submissions:', error);
       toast.error('Failed to load submissions');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify = async (submission: Submission, status: 'approved' | 'rejected') => {
+  const handleVerify = async (submission: Submission, status: 'approved' | 'rejected', credibility?: 'credible' | 'unreliable') => {
     if (!user) return;
+
+    console.log('🔵 HANDLE VERIFY CALLED');
+    console.log('🔵 Parameters received:', { status, credibility });
+    console.log('🔵 Verification notes from state:', verificationNotes);
+    console.log('🔵 About to send to API:', { 
+      id: submission.id, 
+      status, 
+      credibility, 
+      verificationNotes: verificationNotes || undefined 
+    });
 
     setLoading(true);
     try {
       const response = await submissionApi.verify(
         submission.id,
         status,
+        credibility,
         verificationNotes || undefined
       );
 
       if (response.success) {
-        toast.success(
-          `Reference ${status === 'approved' ? '✅ Approved' : '❌ Rejected'} (+5 points)`
-        );
+        let message = '';
+        if (status === 'rejected') {
+          message = '❌ Reference Rejected (+5 points)';
+        } else if (credibility === 'credible') {
+          message = '✅ Marked as Credible (+5 points)';
+        } else if (credibility === 'unreliable') {
+          message = '🚫 Marked as Unreliable (+5 points)';
+        }
+        
+        toast.success(message);
         
         // Update user points locally
         if (user) {
@@ -123,6 +143,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     await handleVerify(submission, 'rejected');
   };
 
+  const handleCredible = async (submission: Submission) => {
+    console.log('🟢 CREDIBLE BUTTON CLICKED');
+    console.log('🟢 About to call handleVerify with: approved, credible');
+    console.log('🟢 Verification notes state:', verificationNotes);
+    await handleVerify(submission, 'approved', 'credible');
+  };
+
+  const handleUnreliable = async (submission: Submission) => {
+    await handleVerify(submission, 'approved', 'unreliable');
+  };
+
   const openVerificationDialog = (submission: Submission) => {
     setSelectedSubmission(submission);
     setVerificationNotes('');
@@ -134,7 +165,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   };
 
   const getVerifiedSubmissions = () => {
-    let filtered = submissions.filter((s) => s.status === 'verified');
+    let filtered = submissions.filter((s) => s.status === 'approved' || s.status === 'rejected');
 
     if (filterCategory !== 'all') {
       filtered = filtered.filter((s) => s.category === filterCategory);
@@ -142,12 +173,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
 
     if (filterDate === 'today') {
       const today = new Date().toISOString().split('T')[0];
-      filtered = filtered.filter((s) => s.verifiedDate === today);
+      filtered = filtered.filter((s) => {
+        const verifiedDate = s.verifiedAt ? new Date(s.verifiedAt).toISOString().split('T')[0] : null;
+        return verifiedDate === today;
+      });
     } else if (filterDate === 'week') {
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekAgoStr = weekAgo.toISOString().split('T')[0];
-      filtered = filtered.filter((s) => s.verifiedDate && s.verifiedDate >= weekAgoStr);
+      filtered = filtered.filter((s) => {
+        if (!s.verifiedAt) return false;
+        return new Date(s.verifiedAt) >= weekAgo;
+      });
     }
 
     return filtered;
@@ -156,10 +192,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   const getStats = () => {
     const total = submissions.length;
     const pending = submissions.filter((s) => s.status === 'pending').length;
-    const verified = submissions.filter((s) => s.status === 'verified').length;
-    const credible = submissions.filter((s) => s.reliability === 'credible').length;
+    const verified = submissions.filter((s) => s.status === 'approved' || s.status === 'rejected').length;
+    const approved = submissions.filter((s) => s.status === 'approved').length;
 
-    return { total, pending, verified, credible };
+    return { total, pending, verified, approved };
   };
 
   if (!user || (user.role !== 'admin' && user.role !== 'verifier')) {
@@ -187,10 +223,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
       <div className="mb-8">
-        <h1 className="mb-2">Verification Dashboard</h1>
+        <h1 className="mb-2">
+          {user.role === 'admin' ? 'Global Admin Dashboard' : 'Verification Dashboard'}
+        </h1>
         <p className="text-gray-600">
-          Review and verify reference submissions from the community
+          {user.role === 'admin' 
+            ? 'Review and verify reference submissions from all countries'
+            : `Review and verify reference submissions from ${getCountryName(user.country)}`
+          }
         </p>
+        {user.role === 'admin' && (
+          <div className="mt-2">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              🌍 Global Access - All Countries
+            </Badge>
+          </div>
+        )}
       </div>
 
       {/* Stats */}
@@ -234,12 +282,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Credible Sources</CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-500" />
+              <CardTitle className="text-sm">Approved</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-500" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl">{stats.credible}</div>
+            <div className="text-2xl">{stats.approved}</div>
           </CardContent>
         </Card>
       </div>
@@ -377,12 +425,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                         <Badge
                           variant="outline"
                           className={
-                            submission.reliability === 'credible'
+                            submission.status === 'approved' && submission.credibility === 'credible'
                               ? 'bg-green-100 text-green-800 border-green-300'
+                              : submission.status === 'approved' && submission.credibility === 'unreliable'
+                              ? 'bg-orange-100 text-orange-800 border-orange-300'
                               : 'bg-red-100 text-red-800 border-red-300'
                           }
                         >
-                          {submission.reliability === 'credible' ? '✅ Credible' : '❌ Unreliable'}
+                          {submission.status === 'approved' 
+                            ? submission.credibility === 'credible' 
+                              ? '✅ Credible' 
+                              : '🚫 Unreliable'
+                            : '❌ Rejected'
+                          }
                         </Badge>
                         <Badge variant="outline">
                           {getCountryFlag(submission.country)} {getCountryName(submission.country)}
@@ -404,7 +459,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                         </div>
                       )}
                       <p className="text-sm text-gray-500 mt-2">
-                        Verified on {submission.verifiedDate}
+                        Verified on {submission.verifiedAt ? new Date(submission.verifiedAt).toLocaleDateString() : 'Unknown'}
                       </p>
                     </div>
                   </div>
@@ -472,15 +527,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
             </Button>
             <Button
               variant="destructive"
-              onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'unreliable')}
+              onClick={() => selectedSubmission && handleUnreliable(selectedSubmission)}
               className="w-full sm:w-auto"
             >
-              ❌ Mark Unreliable
+              🚫 Mark Unreliable
             </Button>
             <Button
               variant="default"
               className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-              onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'credible')}
+              onClick={() => selectedSubmission && handleCredible(selectedSubmission)}
             >
               ✅ Mark Credible
             </Button>
