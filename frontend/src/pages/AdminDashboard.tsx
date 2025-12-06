@@ -83,7 +83,7 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleVerify = async (submission: Submission, status: 'approved' | 'rejected') => {
+  const handleVerify = async (submission: Submission, status: 'approved' | 'rejected', credibility?: 'credible' | 'unreliable') => {
     if (!user) return;
 
     setLoading(true);
@@ -91,6 +91,7 @@ export const AdminDashboard: React.FC = () => {
       const response = await submissionApi.verify(
         submission.id,
         status,
+        credibility,
         verificationNotes || undefined
       );
 
@@ -470,15 +471,15 @@ export const AdminDashboard: React.FC = () => {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'rejected')}
+              onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'approved', 'unreliable')}
               className="w-full sm:w-auto"
             >
-              ❌ Mark Unreliable
+              🚫 Mark Unreliable
             </Button>
             <Button
               variant="default"
               className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-              onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'approved')}
+              onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'approved', 'credible')}
             >
               ✅ Mark Credible
             </Button>

@@ -145,8 +145,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
 
   const handleCredible = async (submission: Submission) => {
     console.log('🟢 CREDIBLE BUTTON CLICKED');
+    console.log('🟢 Submission object:', submission);
     console.log('🟢 About to call handleVerify with: approved, credible');
     console.log('🟢 Verification notes state:', verificationNotes);
+    console.log('🟢 All parameters being passed:', { submission: submission.id, status: 'approved', credibility: 'credible', notes: verificationNotes });
     await handleVerify(submission, 'approved', 'credible');
   };
 
@@ -535,7 +537,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
             <Button
               variant="default"
               className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-              onClick={() => selectedSubmission && handleCredible(selectedSubmission)}
+              onClick={() => {
+                console.log('🔥 BUTTON CLICKED - selectedSubmission:', selectedSubmission);
+                if (selectedSubmission) {
+                  handleCredible(selectedSubmission);
+                }
+              }}
             >
               ✅ Mark Credible
             </Button>
