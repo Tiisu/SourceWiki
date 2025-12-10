@@ -287,7 +287,7 @@ Welcome to the WikiSourceVerifier end-of-year hack challenge! Below are the avai
 ## Resources
 
 - **Main Repository**: [WikiSourceVerifier GitHub]([https://github.com/wikimedia/wikisourceverifier](https://github.com/Tiisu/SourceWiki)
-- **Phabricator Dashboard**: [Hackathon Tasks Board](https://phabricator.wikimedia.org/project/wikisourceverifier/)
+- **Phabricator Dashboard**: [Hackathon Tasks Board](https://phabricator.wikimedia.org/tag/wma-hackchallenge-2025/)
 - **Development Setup**: See README.md for local development instructions
 - **Mentor Contact**: Available in your team channels
 
