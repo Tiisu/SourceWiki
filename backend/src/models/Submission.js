@@ -68,6 +68,27 @@ const submissionSchema = new mongoose.Schema({
   fileName: {
     type: String
   },
+  fileMetadata: {
+    originalName: {
+      type: String
+    },
+    storedName: {
+      type: String
+    },
+    filePath: {
+      type: String
+    },
+    fileSize: {
+      type: Number // Size in bytes
+    },
+    mimeType: {
+      type: String,
+      default: 'application/pdf'
+    },
+    uploadedAt: {
+      type: Date
+    }
+  },
   tags: [{
     type: String,
     trim: true

@@ -211,6 +211,8 @@ export const STORAGE_KEYS = {
 };
 
 // Utility functions
+// Note: getCountryName and getCountryFlag are now in countries.ts
+// Keeping these for backward compatibility but they use the limited COUNTRIES list
 export const getCountryName = (code: string): string => {
   return COUNTRIES.find(c => c.code === code)?.name || code;
 };

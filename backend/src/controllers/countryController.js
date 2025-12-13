@@ -7,6 +7,48 @@ class CountryController {
   // COUNTRY MANAGEMENT
   // ============================================================================
 
+  // Get simple list of all countries (for dropdowns)
+  static async getCountriesList(req, res) {
+    try {
+      const countries = await CountryStats.find({})
+        .select('countryCode countryName')
+        .sort({ countryName: 1 });
+      
+      // Map to simple format with flag emoji
+      const countryList = countries.map(country => ({
+        code: country.countryCode,
+        name: country.countryName,
+        flag: this.getCountryFlag(country.countryCode)
+      }));
+      
+      res.json({
+        success: true,
+        data: {
+          countries: countryList
+        }
+      });
+    } catch (error) {
+      console.error('Countries list fetch error:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Internal Server Error',
+        message: 'Failed to fetch countries list' 
+      });
+    }
+  }
+
+  // Helper method to get flag emoji from country code
+  static getCountryFlag(code) {
+    // Convert country code to flag emoji
+    // Each letter is converted to its regional indicator symbol (U+1F1E6 to U+1F1FF)
+    // A = 0x41, so A + 0x1F1A5 = 0x1F1E6
+    const codePoints = code
+      .toUpperCase()
+      .split('')
+      .map(char => 0x1F1E6 - 0x41 + char.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
+  }
+
   static async getCountries(req, res) {
     try {
       const page = parseInt(req.query.page) || 1;

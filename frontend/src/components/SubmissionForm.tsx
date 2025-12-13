@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { useAuth } from '../lib/auth-context';
-import { COUNTRIES } from '../lib/mock-data';
+import { useCountries } from '../lib/useCountries';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
 import { Upload, Link2, FileText, CheckCircle, AlertCircle } from 'lucide-react';
@@ -19,6 +19,7 @@ interface SubmissionFormProps {
 
 export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) => {
   const { user, updateUser } = useAuth();
+  const { countries } = useCountries();
   const [submissionType, setSubmissionType] = useState<'url' | 'pdf'>('url');
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -27,20 +28,24 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
   const [category, setCategory] = useState<'primary' | 'secondary' | 'unreliable'>('secondary');
   const [wikipediaArticle, setWikipediaArticle] = useState('');
   const [fileName, setFileName] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (selectedFile.size > 10 * 1024 * 1024) {
         toast.error('File size must be less than 10MB');
+        e.target.value = ''; // Reset input
         return;
       }
-      if (file.type !== 'application/pdf') {
+      if (selectedFile.type !== 'application/pdf') {
         toast.error('Only PDF files are allowed');
+        e.target.value = ''; // Reset input
         return;
       }
-      setFileName(file.name);
+      setFileName(selectedFile.name);
+      setFile(selectedFile);
     }
   };
 
@@ -68,7 +73,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
       return;
     }
 
-    if (submissionType === 'pdf' && !fileName) {
+    if (submissionType === 'pdf' && !file) {
       toast.error('Please upload a PDF file');
       return;
     }
@@ -87,14 +92,14 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
 
     try {
       const response = await submissionApi.create({
-        url: submissionType === 'url' ? url : `https://uploads.wikisource.org/${fileName}`,
+        url: submissionType === 'url' ? url : undefined,
         title,
         publisher,
         country,
         category,
         wikipediaArticle: wikipediaArticle || undefined,
         fileType: submissionType,
-        fileName: submissionType === 'pdf' ? fileName : undefined,
+        file: submissionType === 'pdf' ? file || undefined : undefined,
       });
 
       if (response.success) {
@@ -112,6 +117,13 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
       setCategory('secondary');
       setWikipediaArticle('');
       setFileName('');
+      setFile(null);
+      
+      // Reset file input
+      const fileInput = document.getElementById('file') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
 
       // Navigate to directory
       setTimeout(() => onNavigate('directory'), 1500);
@@ -254,7 +266,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
                   <SelectValue placeholder="Select country" />
                 </SelectTrigger>
                 <SelectContent>
-                  {COUNTRIES.map((c) => (
+                  {countries.map((c) => (
                     <SelectItem key={c.code} value={c.code}>
                       {c.flag} {c.name}
                     </SelectItem>

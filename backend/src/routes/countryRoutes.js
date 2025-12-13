@@ -5,6 +5,7 @@ import { protect, authorize } from '../middleware/auth.js';
 const router = express.Router();
 
 // Public routes
+router.get('/list', CountryController.getCountriesList); // Simple list for dropdowns
 router.get('/', CountryController.getCountries);
 router.get('/:code/stats', CountryController.getCountryStats);
 

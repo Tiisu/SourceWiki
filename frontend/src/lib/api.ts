@@ -68,9 +68,13 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
     };
+
+    // Only set Content-Type for JSON, not for FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (this.accessToken) {
       headers['Authorization'] = `Bearer ${this.accessToken}`;
@@ -97,10 +101,23 @@ class ApiClient {
         }
       }
 
+      // Handle non-JSON responses
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return null;
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'An error occurred');
+        const errorMessage = data.message || data.error || 'An error occurred';
+        const error = new Error(errorMessage);
+        // @ts-ignore - Attach status code for error handling
+        error.status = response.status;
+        throw error;
       }
 
       return data;
@@ -119,7 +136,7 @@ class ApiClient {
   async post<T = any>(endpoint: string, data?: any): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     });
   }
 
@@ -166,12 +183,16 @@ export const authApi = {
 
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/auth/password', { currentPassword, newPassword }),
+
+  // Wikimedia OAuth 1.0a (using same endpoints, backend now uses OAuth 1.0a)
+  initiateWikimediaOAuth: () => api.get('/auth/wikimedia/initiate'),
+  linkWikimediaAccount: () => api.post('/auth/wikimedia/link'),
 };
 
 // Submission API
 export const submissionApi = {
   create: (data: {
-    url: string;
+    url?: string;
     title: string;
     publisher: string;
     country: string;
@@ -179,7 +200,26 @@ export const submissionApi = {
     wikipediaArticle?: string;
     fileType?: string;
     fileName?: string;
-  }) => api.post('/submissions', data),
+    file?: File; // Optional file for PDF uploads
+  }) => {
+    // If file is provided, use FormData
+    if (data.file) {
+      const formData = new FormData();
+      formData.append('pdfFile', data.file);
+      formData.append('title', data.title);
+      formData.append('publisher', data.publisher);
+      formData.append('country', data.country);
+      formData.append('category', data.category);
+      formData.append('fileType', 'pdf');
+      if (data.wikipediaArticle) {
+        formData.append('wikipediaArticle', data.wikipediaArticle);
+      }
+      return api.post('/submissions', formData);
+    } else {
+      // Otherwise, send as JSON
+      return api.post('/submissions', data);
+    }
+  },
 
   getAll: (params?: {
     country?: string;
@@ -234,6 +274,11 @@ export const userApi = {
     query.append('limit', String(limit));
     return api.get(`/users/leaderboard?${query.toString()}`);
   },
+};
+
+// Country API
+export const countryApi = {
+  getList: () => api.get('/countries/list'),
 
   getAll: (params?: {
     role?: string;

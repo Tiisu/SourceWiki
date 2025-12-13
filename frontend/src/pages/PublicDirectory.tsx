@@ -13,13 +13,12 @@ import {
   TableRow,
 } from '../components/ui/table';
 import {
-  COUNTRIES,
   getCategoryIcon,
   getCategoryColor,
-  getCountryFlag,
-  getCountryName,
   getReliabilityColor,
 } from '../lib/mock-data';
+import { useCountries } from '../lib/useCountries';
+import { getCountryFlag, getCountryName } from '../lib/countries';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
 
@@ -47,6 +46,7 @@ interface Submission {
 import { Search, Filter, ExternalLink, Calendar, Globe, BookOpen } from 'lucide-react';
 
 export const PublicDirectory: React.FC = () => {
+  const { countries } = useCountries();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCountry, setFilterCountry] = useState<string>('all');
@@ -234,7 +234,7 @@ export const PublicDirectory: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Countries</SelectItem>
-                {COUNTRIES.map((country) => (
+                {countries.map((country) => (
                   <SelectItem key={country.code} value={country.code}>
                     {country.flag} {country.name}
                   </SelectItem>

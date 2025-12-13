@@ -3,10 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
 import connectDB from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
+import { optionalAuth } from './middleware/auth.js';
+import { userRateLimiter } from './middleware/rateLimiter.js';
 import authRoutes from './routes/authRoutes.js';
+import wikimediaOAuth1Routes from './routes/wikimediaOAuth1Routes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -22,8 +24,11 @@ connectDB();
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
+// Security middleware - configure helmet for production
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resources
+  contentSecurityPolicy: false, // Disable CSP for API (can be enabled with proper config)
+}));
 
 // CORS configuration
 const allowedOrigins = [
@@ -37,30 +42,36 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
+    // In development, allow localhost on any port
+    if (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost')) {
+      return callback(null, true);
+    }
+    
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
+// Cookie parser (needed before auth middleware)
+app.use(cookieParser());
 
-app.use('/api/', limiter);
+// Optional authentication middleware (populates req.user if token exists)
+// This must run before rate limiting so user info is available
+app.use(optionalAuth);
+
+// User-based rate limiting with role-specific limits
+// Applied to all API routes
+app.use('/api/', userRateLimiter);
 
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Cookie parser
-app.use(cookieParser());
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {
@@ -78,6 +89,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/auth/wikimedia', wikimediaOAuth1Routes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
@@ -106,10 +118,10 @@ app.use((req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = config.port;
 
-const server = app.listen(config.port, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+const server = app.listen(PORT, () => {
+  console.log(`Server running in ${config.nodeEnv} mode on port ${PORT}`);
 });
 
 // Handle unhandled promise rejections

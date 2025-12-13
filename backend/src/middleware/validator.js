@@ -3,10 +3,12 @@ import { body, validationResult } from 'express-validator';
 export const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.log('❌ Validation errors:', errors.array());
     return res.status(400).json({
       success: false,
+      message: errors.array()[0]?.msg || 'Validation failed',
       errors: errors.array().map(err => ({
-        field: err.path,
+        field: err.path || err.param,
         message: err.msg
       }))
     });
@@ -47,30 +49,47 @@ export const loginValidation = [
 
 export const submissionValidation = [
   body('url')
-    .trim()
-    .notEmpty()
-    .withMessage('URL is required')
-    .isURL()
-    .withMessage('Please provide a valid URL'),
+    .optional({ checkFalsy: true, values: 'falsy' })
+    .customSanitizer((value) => value ? String(value).trim() : value)
+    .custom((value, { req }) => {
+      // URL is required for URL submissions, optional for PDF submissions
+      const fileType = req.body?.fileType || (req.file ? 'pdf' : 'url');
+      if (fileType === 'url' && !value) {
+        throw new Error('URL is required for URL submissions');
+      }
+      if (value && typeof value === 'string' && !/^https?:\/\/.+/.test(value)) {
+        throw new Error('Please provide a valid URL');
+      }
+      return true;
+    }),
   body('title')
-    .trim()
+    .customSanitizer((value) => value ? String(value).trim() : value)
     .notEmpty()
     .withMessage('Title is required')
     .isLength({ max: 200 })
     .withMessage('Title cannot exceed 200 characters'),
   body('publisher')
-    .trim()
+    .customSanitizer((value) => value ? String(value).trim() : value)
     .notEmpty()
     .withMessage('Publisher is required')
     .isLength({ max: 100 })
     .withMessage('Publisher cannot exceed 100 characters'),
   body('country')
-    .trim()
+    .customSanitizer((value) => value ? String(value).trim() : value)
     .notEmpty()
     .withMessage('Country is required'),
   body('category')
+    .customSanitizer((value) => value ? String(value).trim() : value)
     .isIn(['primary', 'secondary', 'unreliable'])
-    .withMessage('Category must be primary, secondary, or unreliable')
+    .withMessage('Category must be primary, secondary, or unreliable'),
+  body('fileType')
+    .optional({ checkFalsy: true })
+    .customSanitizer((value) => value ? String(value).trim() : value)
+    .isIn(['url', 'pdf'])
+    .withMessage('File type must be url or pdf'),
+  body('wikipediaArticle')
+    .optional({ checkFalsy: true })
+    .customSanitizer((value) => value ? String(value).trim() : value)
 ];
 
 export const verificationValidation = [
