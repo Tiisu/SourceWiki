@@ -12,7 +12,8 @@
     "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration",
     "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testPathIgnorePatterns=integration",
-    "test:setup": "node -e \"console.log('To set up testing, see tests/QUICK_START.md')\""
+    "test:setup": "node -e \"console.log('To set up testing, see tests/QUICK_START.md')\"",
+    "seed:countries": "node scripts/seedCountries.js"
   },
   "keywords": [
     "wikipedia",

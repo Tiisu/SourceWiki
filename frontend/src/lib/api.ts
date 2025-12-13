@@ -274,6 +274,11 @@ export const userApi = {
     query.append('limit', String(limit));
     return api.get(`/users/leaderboard?${query.toString()}`);
   },
+};
+
+// Country API
+export const countryApi = {
+  getList: () => api.get('/countries/list'),
 
   getAll: (params?: {
     role?: string;

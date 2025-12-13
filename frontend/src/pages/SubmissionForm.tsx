@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { useAuth } from '../lib/auth-context';
-import { COUNTRIES } from '../lib/mock-data';
+import { useCountries } from '../lib/useCountries';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
 import { Upload, Link2, FileText, CheckCircle, AlertCircle } from 'lucide-react';
@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 export const SubmissionForm: React.FC = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
+  const { countries } = useCountries();
   const [submissionType, setSubmissionType] = useState<'url' | 'pdf'>('url');
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -263,7 +264,7 @@ export const SubmissionForm: React.FC = () => {
                   <SelectValue placeholder="Select country" />
                 </SelectTrigger>
                 <SelectContent>
-                  {COUNTRIES.map((c) => (
+                  {countries.map((c) => (
                     <SelectItem key={c.code} value={c.code}>
                       {c.flag} {c.name}
                     </SelectItem>
