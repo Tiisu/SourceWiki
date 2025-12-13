@@ -6,19 +6,71 @@ import User from '../models/User.js';
 // @access  Private
 export const createSubmission = async (req, res, next) => {
   try {
-    const { url, title, publisher, country, category, wikipediaArticle, fileType, fileName } = req.body;
+    console.log('📝 Create submission request:', {
+      body: req.body,
+      file: req.file ? {
+        originalname: req.file.originalname,
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      } : null,
+      contentType: req.get('content-type')
+    });
 
-    const submission = await Submission.create({
-      url,
+    const { url, title, publisher, country, category, wikipediaArticle, fileType } = req.body;
+
+    // Determine submission type based on file upload or URL
+    const isPDFUpload = req.file || fileType === 'pdf';
+    const submissionType = isPDFUpload ? 'pdf' : 'url';
+
+    // Validate required fields based on submission type
+    if (submissionType === 'url' && !url) {
+      return res.status(400).json({
+        success: false,
+        message: 'URL is required for URL submissions'
+      });
+    }
+
+    if (submissionType === 'pdf' && !req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'PDF file is required for PDF submissions'
+      });
+    }
+
+    // Build submission data
+    const submissionData = {
       title,
       publisher,
       country,
       category,
       wikipediaArticle,
-      fileType: fileType || 'url',
-      fileName,
+      fileType: submissionType,
       submitter: req.user.id
-    });
+    };
+
+    // Handle URL submission
+    if (submissionType === 'url') {
+      submissionData.url = url;
+    } else {
+      // Handle PDF file upload
+      const filePath = req.file.path;
+      const baseUrl = req.protocol + '://' + req.get('host');
+      const fileUrl = `${baseUrl}/api/submissions/uploads/${req.file.filename}`;
+      
+      submissionData.url = fileUrl; // Store the URL to access the file
+      submissionData.fileName = req.file.originalname;
+      submissionData.fileMetadata = {
+        originalName: req.file.originalname,
+        storedName: req.file.filename,
+        filePath: filePath,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        uploadedAt: new Date()
+      };
+    }
+
+    const submission = await Submission.create(submissionData);
 
     // Award points to user
     await User.findByIdAndUpdate(req.user.id, {
@@ -33,6 +85,7 @@ export const createSubmission = async (req, res, next) => {
       submission: populatedSubmission
     });
   } catch (error) {
+    console.error('❌ Error creating submission:', error);
     next(error);
   }
 };

@@ -68,9 +68,13 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
     };
+
+    // Only set Content-Type for JSON, not for FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (this.accessToken) {
       headers['Authorization'] = `Bearer ${this.accessToken}`;
@@ -132,7 +136,7 @@ class ApiClient {
   async post<T = any>(endpoint: string, data?: any): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     });
   }
 
@@ -188,7 +192,7 @@ export const authApi = {
 // Submission API
 export const submissionApi = {
   create: (data: {
-    url: string;
+    url?: string;
     title: string;
     publisher: string;
     country: string;
@@ -196,7 +200,26 @@ export const submissionApi = {
     wikipediaArticle?: string;
     fileType?: string;
     fileName?: string;
-  }) => api.post('/submissions', data),
+    file?: File; // Optional file for PDF uploads
+  }) => {
+    // If file is provided, use FormData
+    if (data.file) {
+      const formData = new FormData();
+      formData.append('pdfFile', data.file);
+      formData.append('title', data.title);
+      formData.append('publisher', data.publisher);
+      formData.append('country', data.country);
+      formData.append('category', data.category);
+      formData.append('fileType', 'pdf');
+      if (data.wikipediaArticle) {
+        formData.append('wikipediaArticle', data.wikipediaArticle);
+      }
+      return api.post('/submissions', formData);
+    } else {
+      // Otherwise, send as JSON
+      return api.post('/submissions', data);
+    }
+  },
 
   getAll: (params?: {
     country?: string;
