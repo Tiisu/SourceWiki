@@ -74,9 +74,9 @@ export const AuthPage: React.FC = () => {
     
     setWikimediaLoading(true);
     try {
-      console.log('🔐 Initiating Wikimedia OAuth 2.0...');
-      const response = await authApi.initiateWikimediaOAuth2();
-      console.log('📥 OAuth 2.0 response:', response);
+      console.log('🔐 Initiating Wikimedia OAuth...');
+      const response = await authApi.initiateWikimediaOAuth();
+      console.log('📥 OAuth response:', response);
       console.log('📥 Response type:', typeof response);
       console.log('📥 Response keys:', response ? Object.keys(response) : 'null');
       
@@ -117,7 +117,7 @@ export const AuthPage: React.FC = () => {
         setWikimediaLoading(false);
       }
     } catch (error) {
-      console.error('❌ OAuth 2.0 error:', error);
+      console.error('❌ OAuth error:', error);
       console.error('❌ Error details:', {
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,

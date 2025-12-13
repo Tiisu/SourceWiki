@@ -180,8 +180,8 @@ export const authApi = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/auth/password', { currentPassword, newPassword }),
 
-  // Wikimedia OAuth 2.0
-  initiateWikimediaOAuth2: () => api.get('/auth/wikimedia/initiate'),
+  // Wikimedia OAuth 1.0a (using same endpoints, backend now uses OAuth 1.0a)
+  initiateWikimediaOAuth: () => api.get('/auth/wikimedia/initiate'),
   linkWikimediaAccount: () => api.post('/auth/wikimedia/link'),
 };
 

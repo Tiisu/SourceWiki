@@ -20,7 +20,7 @@ export const WikimediaCallbackPage: React.FC = () => {
 
       // Handle errors
       if (error) {
-        console.error('OAuth 2.0 error:', error, message);
+        console.error('OAuth error:', error, message);
         toast.error(message || 'Authentication failed');
         navigate('/auth', { replace: true });
         return;
