@@ -97,10 +97,23 @@ class ApiClient {
         }
       }
 
+      // Handle non-JSON responses
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return null;
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'An error occurred');
+        const errorMessage = data.message || data.error || 'An error occurred';
+        const error = new Error(errorMessage);
+        // @ts-ignore - Attach status code for error handling
+        error.status = response.status;
+        throw error;
       }
 
       return data;
@@ -166,6 +179,10 @@ export const authApi = {
 
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/auth/password', { currentPassword, newPassword }),
+
+  // Wikimedia OAuth 2.0
+  initiateWikimediaOAuth2: () => api.get('/auth/wikimedia/initiate'),
+  linkWikimediaAccount: () => api.post('/auth/wikimedia/link'),
 };
 
 // Submission API

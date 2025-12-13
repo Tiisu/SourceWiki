@@ -56,7 +56,22 @@ const userSchema = new mongoose.Schema({
       default: Date.now,
       expires: 604800 // 7 days in seconds
     }
-  }]
+  }],
+  // Wikimedia OAuth 2.0 integration (optional)
+  wikimediaOAuth2: {
+    wikimediaId: {
+      type: String,
+      sparse: true, // Allows null values but enforces uniqueness when present
+      unique: true
+    },
+    username: String,
+    accessToken: String, // In production, encrypt this
+    refreshToken: String, // In production, encrypt this
+    tokenExpiresAt: Date,
+    linkedAt: Date,
+    editCount: Number,
+    groups: [String], // e.g., 'autoconfirmed', 'editor', etc.
+  }
 }, {
   timestamps: true
 });
@@ -80,15 +95,21 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 // Method to get public profile
 userSchema.methods.getPublicProfile = function() {
   return {
-    id: this._id,
+    id: this._id.toString(),
     username: this.username,
     email: this.email,
     country: this.country,
     role: this.role,
     points: this.points,
-    badges: this.badges,
+    badges: this.badges || [],
     joinDate: this.createdAt,
-    isActive: this.isActive
+    isActive: this.isActive,
+    wikimediaAccount: this.wikimediaOAuth2?.wikimediaId ? {
+      username: this.wikimediaOAuth2.username,
+      editCount: this.wikimediaOAuth2.editCount,
+      linkedAt: this.wikimediaOAuth2.linkedAt,
+      groups: this.wikimediaOAuth2.groups,
+    } : null
   };
 };
 

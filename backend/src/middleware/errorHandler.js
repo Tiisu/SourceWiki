@@ -1,9 +1,11 @@
+import config from '../config/config.js';
+
 const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
   // Log error for monitoring
-  if (process.env.NODE_ENV === 'development') {
+  if (config.nodeEnv === 'development') {
     console.error(err.stack);
   }
 
@@ -40,7 +42,7 @@ const errorHandler = (err, req, res, next) => {
   res.status(error.statusCode || 500).json({
     success: false,
     message: error.message || 'Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(config.nodeEnv === 'development' && { stack: err.stack })
   });
 };
 

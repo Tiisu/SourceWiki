@@ -12,6 +12,12 @@ export interface User {
   badges: Array<{ name: string; icon: string; earnedAt: string }>;
   joinDate: string;
   isActive: boolean;
+  wikimediaAccount?: {
+    username: string;
+    editCount: number;
+    linkedAt: string;
+    groups?: string[];
+  } | null;
 }
 
 interface AuthContextType {
@@ -19,7 +25,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (username: string, email: string, password: string, country: string) => Promise<boolean>;
-  updateUser: (updates: Partial<User>) => void;
+  updateUser: (updates: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,7 +40,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (api.isAuthenticated()) {
         try {
           const response = await authApi.getMe();
-          setUser(response.user);
+          if (response.success && response.user) {
+            setUser(response.user);
+          }
         } catch (error) {
           // Token invalid, clear auth
           api.clearAuth();
@@ -45,6 +53,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     checkAuth();
   }, []);
+
+  // Refresh user data when needed (e.g., after account linking)
+  const refreshUser = async () => {
+    if (api.isAuthenticated()) {
+      try {
+        const response = await authApi.getMe();
+        if (response.success && response.user) {
+          setUser(response.user);
+        }
+      } catch (error) {
+        console.error('Failed to refresh user:', error);
+      }
+    }
+  };
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {

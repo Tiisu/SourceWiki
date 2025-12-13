@@ -7,14 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useAuth } from '../lib/auth-context';
+import { authApi } from '../lib/api';
 import { COUNTRIES } from '../lib/mock-data';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Globe } from 'lucide-react';
 
 export const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, register } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [wikimediaLoading, setWikimediaLoading] = useState(false);
 
   // Login form state
   const [loginUsername, setLoginUsername] = useState('');
@@ -63,6 +65,70 @@ export const AuthPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handleWikimediaLogin = async () => {
+    // Prevent multiple simultaneous requests
+    if (wikimediaLoading) {
+      return;
+    }
+    
+    setWikimediaLoading(true);
+    try {
+      console.log('🔐 Initiating Wikimedia OAuth 2.0...');
+      const response = await authApi.initiateWikimediaOAuth2();
+      console.log('📥 OAuth 2.0 response:', response);
+      console.log('📥 Response type:', typeof response);
+      console.log('📥 Response keys:', response ? Object.keys(response) : 'null');
+      
+      // Backend returns 'authorizationUrl' (not 'authorizeUrl')
+      const authUrl = response?.authorizationUrl || response?.authorizeUrl;
+      
+      console.log('🔍 Checking response:', {
+        hasResponse: !!response,
+        hasSuccess: response?.success,
+        successValue: response?.success,
+        hasAuthUrl: !!authUrl,
+        authUrlValue: authUrl ? authUrl.substring(0, 100) + '...' : 'null',
+        responseKeys: response ? Object.keys(response) : []
+      });
+      
+      if (response && response.success === true && authUrl && typeof authUrl === 'string') {
+        console.log('✅ All checks passed. Redirecting to:', authUrl);
+        // Use window.location.replace to prevent back button issues
+        window.location.replace(authUrl);
+        // Don't set loading to false since we're redirecting
+        return;
+      } else {
+        console.error('❌ Invalid response structure:', {
+          response,
+          success: response?.success,
+          authUrl,
+          authUrlType: typeof authUrl,
+          responseType: typeof response
+        });
+        const errorMsg = !response 
+          ? 'No response from server' 
+          : !response.success 
+          ? `Response indicates failure: ${response.message || 'Unknown error'}`
+          : !authUrl 
+          ? 'No authorization URL in response'
+          : 'Invalid response format';
+        toast.error(`Failed to initiate Wikipedia login: ${errorMsg}`);
+        setWikimediaLoading(false);
+      }
+    } catch (error) {
+      console.error('❌ OAuth 2.0 error:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined
+      });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to Wikipedia';
+      toast.error(`Failed to initiate Wikipedia login: ${errorMessage}`);
+      setWikimediaLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
@@ -132,6 +198,35 @@ export const AuthPage: React.FC = () => {
                     )}
                   </Button>
                 </form>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-500">Or sign in with</span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleWikimediaLogin}
+                  disabled={wikimediaLoading}
+                >
+                  {wikimediaLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="mr-2 h-4 w-4" />
+                      Sign in with Wikipedia
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -215,6 +310,35 @@ export const AuthPage: React.FC = () => {
                     )}
                   </Button>
                 </form>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-500">Or sign up with</span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleWikimediaLogin}
+                  disabled={wikimediaLoading}
+                >
+                  {wikimediaLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="mr-2 h-4 w-4" />
+                      Sign up with Wikipedia
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
