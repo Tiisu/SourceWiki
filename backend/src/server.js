@@ -3,9 +3,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
 import connectDB from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
+import { optionalAuth } from './middleware/auth.js';
+import { userRateLimiter } from './middleware/rateLimiter.js';
 import authRoutes from './routes/authRoutes.js';
 import wikimediaOAuth1Routes from './routes/wikimediaOAuth1Routes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
@@ -57,21 +58,20 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
+// Cookie parser (needed before auth middleware)
+app.use(cookieParser());
 
-app.use('/api/', limiter);
+// Optional authentication middleware (populates req.user if token exists)
+// This must run before rate limiting so user info is available
+app.use(optionalAuth);
+
+// User-based rate limiting with role-specific limits
+// Applied to all API routes
+app.use('/api/', userRateLimiter);
 
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Cookie parser
-app.use(cookieParser());
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {
