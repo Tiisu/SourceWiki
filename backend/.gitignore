@@ -5,3 +5,5 @@ uploads/
 .DS_Store
 dist/
 build/
+coverage/
+*.test.js.snap

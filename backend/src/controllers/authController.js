@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import { sendTokenResponse, verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
+import config from '../config/config.js';
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -68,16 +69,18 @@ export const login = async (req, res, next) => {
 // @access  Private
 export const logout = async (req, res, next) => {
   try {
+    const cookieOptions = {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: config.nodeEnv === 'production' ? 'none' : 'lax',
+      expires: new Date(Date.now() + 10 * 1000),
+      path: '/'
+    };
+    
     res
       .status(200)
-      .cookie('token', 'none', {
-        expires: new Date(Date.now() + 10 * 1000),
-        httpOnly: true
-      })
-      .cookie('refreshToken', 'none', {
-        expires: new Date(Date.now() + 10 * 1000),
-        httpOnly: true
-      })
+      .cookie('token', 'none', cookieOptions)
+      .cookie('refreshToken', 'none', cookieOptions)
       .json({
         success: true,
         message: 'Logged out successfully'
@@ -108,7 +111,8 @@ export const getMe = async (req, res, next) => {
 // @access  Public
 export const refreshToken = async (req, res, next) => {
   try {
-    const { refreshToken } = req.body;
+    // Check for refresh token in body or cookies
+    const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
 
     if (!refreshToken) {
       return res.status(401).json({
@@ -122,7 +126,7 @@ export const refreshToken = async (req, res, next) => {
     if (!decoded) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid refresh token'
+        message: 'Invalid or expired refresh token'
       });
     }
 
@@ -140,6 +144,7 @@ export const refreshToken = async (req, res, next) => {
     res.status(200).json({
       success: true,
       accessToken,
+      refreshToken, // Return the same refresh token
       user: user.getPublicProfile()
     });
   } catch (error) {

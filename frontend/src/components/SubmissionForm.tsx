@@ -27,20 +27,24 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
   const [category, setCategory] = useState<'primary' | 'secondary' | 'unreliable'>('secondary');
   const [wikipediaArticle, setWikipediaArticle] = useState('');
   const [fileName, setFileName] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (selectedFile.size > 10 * 1024 * 1024) {
         toast.error('File size must be less than 10MB');
+        e.target.value = ''; // Reset input
         return;
       }
-      if (file.type !== 'application/pdf') {
+      if (selectedFile.type !== 'application/pdf') {
         toast.error('Only PDF files are allowed');
+        e.target.value = ''; // Reset input
         return;
       }
-      setFileName(file.name);
+      setFileName(selectedFile.name);
+      setFile(selectedFile);
     }
   };
 
@@ -68,7 +72,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
       return;
     }
 
-    if (submissionType === 'pdf' && !fileName) {
+    if (submissionType === 'pdf' && !file) {
       toast.error('Please upload a PDF file');
       return;
     }
@@ -87,14 +91,14 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
 
     try {
       const response = await submissionApi.create({
-        url: submissionType === 'url' ? url : `https://uploads.wikisource.org/${fileName}`,
+        url: submissionType === 'url' ? url : undefined,
         title,
         publisher,
         country,
         category,
         wikipediaArticle: wikipediaArticle || undefined,
         fileType: submissionType,
-        fileName: submissionType === 'pdf' ? fileName : undefined,
+        file: submissionType === 'pdf' ? file || undefined : undefined,
       });
 
       if (response.success) {
@@ -112,6 +116,13 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
       setCategory('secondary');
       setWikipediaArticle('');
       setFileName('');
+      setFile(null);
+      
+      // Reset file input
+      const fileInput = document.getElementById('file') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
 
       // Navigate to directory
       setTimeout(() => onNavigate('directory'), 1500);

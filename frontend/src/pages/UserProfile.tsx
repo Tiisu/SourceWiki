@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useAuth } from '../lib/auth-context';
+import { toast } from 'sonner';
 import {
   getSubmissions,
   BADGES,
@@ -18,7 +19,9 @@ import { Award, TrendingUp, Calendar, CheckCircle, Clock, XCircle } from 'lucide
 
 export const UserProfile: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user, updateUser } = useAuth();
+
 
   const userStats = useMemo(() => {
     if (!user) return null;

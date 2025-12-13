@@ -332,8 +332,6 @@ For issues or questions, please refer to the main project documentation.
 FLASK_ENV=development
 SECRET_KEY=your-secret-key
 DATABASE_URL=postgresql://user:pass@localhost/dbname
-WIKIMEDIA_CONSUMER_KEY=your-key
-WIKIMEDIA_CONSUMER_SECRET=your-secret
 REDIS_URL=redis://localhost:6379/0
 ```
 

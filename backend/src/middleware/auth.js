@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import config from '../config/config.js';
 
 export const protect = async (req, res, next) => {
   try {
@@ -23,7 +24,7 @@ export const protect = async (req, res, next) => {
 
     try {
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, config.jwtSecret);
 
       // Get user from token
       req.user = await User.findById(decoded.id).select('-password');
@@ -81,7 +82,7 @@ export const optionalAuth = async (req, res, next) => {
 
     if (token) {
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, config.jwtSecret);
         req.user = await User.findById(decoded.id).select('-password');
       } catch (error) {
         // Token invalid, but continue without user
