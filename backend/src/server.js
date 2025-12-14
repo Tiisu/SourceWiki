@@ -7,6 +7,10 @@ import rateLimit from 'express-rate-limit';
 import connectDB from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
+<<<<<<< HEAD
+=======
+import wikimediaOAuth1Routes from './routes/wikimediaOAuth1Routes.js';
+>>>>>>> 718cf8f (Add OAuth 1.0a implementation with fallback support)
 import submissionRoutes from './routes/submissionRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -78,6 +82,10 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+<<<<<<< HEAD
+=======
+app.use('/api/auth/wikimedia', wikimediaOAuth1Routes);
+>>>>>>> 718cf8f (Add OAuth 1.0a implementation with fallback support)
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
