@@ -87,7 +87,8 @@ interface Submission {
   count: number;
   submissions: {id: string; url: String; title: String; publisher: String; country: String; Category: String; status: String; credibility: String;
   fileType:String;
-  fileName: String;}[];
+  fileName: String;
+  submittedDate: Date;}[];
   title?: string;
   points?: number;
   submittedDate?: string;
@@ -158,20 +159,17 @@ useEffect(() => {
   /* ------------------ STATS ------------------ */
 
   const stats = useMemo(() => {
-    const total = submissions?.count;
-    const verified = 0// submissions.filter(s => s.status === 'verified').length;
-    const pending = 0//submissions.filter(s => s.status === 'pending').length;
-    const rejected = 0//submissions.filter(s => s.status === 'rejected').length;
+    const total = submissions.count;
+    const verified = submissions.submissions.filter(s => s.status === 'approved').length;
+    const pending = submissions.submissions.filter(s => s.status === 'pending').length;
+    const rejected = submissions.submissions.filter(s => s.status === 'rejected').length;
 
     return {
       total,
       verified,
       pending,
       rejected,
-      pointsEarned: submissions?.count //reduce(
-        // (sum, s) => sum + (s.points ?? 0),
-        // 0
-      // ),
+      pointsEarned: submissions.count
     };
   }, [submissions]);
 
