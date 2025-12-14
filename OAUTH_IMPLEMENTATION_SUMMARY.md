@@ -239,4 +239,3 @@ The Wikimedia OAuth integration is **complete and production-ready**. All core f
 Users can now authenticate with Wikipedia, link their accounts, and verify their edit history seamlessly!
 
 
-

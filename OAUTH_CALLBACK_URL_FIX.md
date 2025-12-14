@@ -74,4 +74,3 @@ The application now logs the callback URL on startup. Check your backend console
 This should match exactly what's in your Wikimedia OAuth consumer settings.
 
 
-
