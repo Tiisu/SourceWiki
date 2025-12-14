@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
+import { SocketProvider } from './lib/socket-context';
 import { Navigation } from './components/Navigation';
 import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile, ApiDocumentation } from './pages';
 import { Toaster } from './components/ui/sonner';
@@ -97,7 +98,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <SocketProvider>
+        <AppContent />
+      </SocketProvider>
     </AuthProvider>
   );
 }

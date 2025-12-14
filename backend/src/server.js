@@ -17,6 +17,10 @@ import systemRoutes from './routes/systemRoutes.js';
 import reportsRoutes from './routes/reportsRoutes.js';
 //importing the config file where all the environment variables are stored and loaded
 import config from './config/config.js';
+import { Server } from 'socket.io';
+import { createServer } from 'http';
+import socketAuth from './middleware/socketAuth.js';
+import setupSocketIO from './config/socketio.js';
 
 
 // Connect to database
@@ -250,8 +254,31 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || config.port || 5000;
 
-const server = app.listen(PORT, () => {
+// Create HTTP server
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+const io = new Server(httpServer, {
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      process.env.FRONTEND_URL
+    ].filter(Boolean),
+    credentials: true,
+    methods: ['GET', 'POST']
+  }
+});
+
+// Setup Socket.io with authentication and event handlers
+setupSocketIO(io);
+
+// Make io available globally for use in controllers
+app.set('io', io);
+
+const server = httpServer.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`Socket.io server initialized`);
 });
 
 // Handle unhandled promise rejections
@@ -261,3 +288,4 @@ process.on('unhandledRejection', (err, promise) => {
 });
 
 export default app;
+export { io };

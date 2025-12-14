@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { useAuth } from '../lib/auth-context';
+import { useSocket } from '../lib/socket-context';
 import {
   getCategoryIcon,
   getCategoryColor,
@@ -52,6 +53,7 @@ import { CheckCircle, XCircle, Eye, Clock, TrendingUp, Users, FileCheck } from '
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { socket, isConnected } = useSocket();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [verificationNotes, setVerificationNotes] = useState('');
@@ -64,24 +66,122 @@ export const AdminDashboard: React.FC = () => {
     loadSubmissions();
   }, [user]);
 
-  const loadSubmissions = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      // Load pending submissions for verifier's country
-      if (user.role === 'verifier' || user.role === 'admin') {
-        const response = await submissionApi.getPendingForCountry();
-        if (response.success) {
-          setSubmissions(response.submissions);
-        }
+  // Set up Socket.io event listeners
+  useEffect(() => {
+    if (!socket || !isConnected || !user) return;
+
+    // Listen for new submissions
+    const handleNewSubmission = (data: any) => {
+      console.log('New submission received via Socket.io:', data);
+      
+      const newSubmission = data.submission;
+      
+      // Check if this submission should be shown to the current verifier
+      // Admins see all, verifiers see their country's submissions
+      const shouldShow = user.role === 'admin' || 
+                        (user.role === 'verifier' && user.country === newSubmission.country);
+      
+      if (shouldShow) {
+        toast.info(data.message || 'New submission received', {
+          description: `${newSubmission.title} from ${newSubmission.country}`,
+          duration: 5000,
+        });
+        
+        // Add the new submission to the list immediately (at the top)
+        setSubmissions((prev) => {
+          // Check if submission already exists (avoid duplicates)
+          const exists = prev.some(s => {
+            const prevId = s.id || s._id;
+            const newId = newSubmission.id || newSubmission._id;
+            return prevId === newId;
+          });
+          
+          if (exists) {
+            return prev; // Already in list
+          }
+          
+          // Add to the beginning of the list
+          return [newSubmission, ...prev];
+        });
+        
+        // Also reload after a short delay to ensure we have complete data
+        setTimeout(() => {
+          loadSubmissions();
+        }, 500);
       }
-    } catch (error) {
-      toast.error('Failed to load submissions');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    // Listen for submission updates (verification, etc.)
+    const handleSubmissionUpdated = (data: any) => {
+      console.log('Submission updated:', data);
+      
+      const updatedSubmission = data.submission;
+      
+      if (data.action === 'verified') {
+        toast.success('Submission verified', {
+          description: `${updatedSubmission.title} has been ${updatedSubmission.status}`,
+          duration: 5000,
+        });
+      } else if (data.action === 'created') {
+        // This is handled by handleNewSubmission, but we can also handle it here for completeness
+        return;
+      }
+      
+      // Update the submission in the list if it exists, or remove if it's no longer pending
+      setSubmissions((prev) => {
+        const submissionId = updatedSubmission.id || updatedSubmission._id;
+        const index = prev.findIndex((s) => 
+          (s.id === submissionId) || (s._id === submissionId)
+        );
+        
+        if (index !== -1) {
+          const updated = [...prev];
+          // If status is no longer pending and we're on the pending tab, remove it
+          if (updatedSubmission.status !== 'pending') {
+            updated.splice(index, 1);
+          } else {
+            // Update the submission
+            updated[index] = { ...updated[index], ...updatedSubmission };
+          }
+          return updated;
+        }
+        
+        // If not found and it's a new pending submission, add it
+        if (updatedSubmission.status === 'pending') {
+          const shouldShow = user?.role === 'admin' || 
+                            (user?.role === 'verifier' && user?.country === updatedSubmission.country);
+          if (shouldShow) {
+            return [updatedSubmission, ...prev];
+          }
+        }
+        
+        return prev;
+      });
+      
+      // Reload to ensure we have the latest data
+      loadSubmissions();
+    };
+
+    // Listen for submission verified events
+    const handleSubmissionVerified = (data: any) => {
+      console.log('Submission verified event:', data);
+      toast.success(data.message || 'Submission verified');
+      loadSubmissions();
+    };
+
+    // Register event listeners
+    socket.on('new-submission', handleNewSubmission);
+    socket.on('submission-updated', handleSubmissionUpdated);
+    socket.on('submission-verified', handleSubmissionVerified);
+
+    // Cleanup on unmount
+    return () => {
+      socket.off('new-submission', handleNewSubmission);
+      socket.off('submission-updated', handleSubmissionUpdated);
+      socket.off('submission-verified', handleSubmissionVerified);
+    };
+  }, [socket, isConnected, user, loadSubmissions]);
+
 
   const handleVerify = async (submission: Submission, status: 'approved' | 'rejected', credibility?: 'credible' | 'unreliable') => {
     if (!user) return;
@@ -186,10 +286,20 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
       <div className="mb-8">
-        <h1 className="mb-2">Verification Dashboard</h1>
-        <p className="text-gray-600">
-          Review and verify reference submissions from the community
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="mb-2">Verification Dashboard</h1>
+            <p className="text-gray-600">
+              Review and verify reference submissions from the community
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`h-3 w-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-sm text-gray-600">
+              {isConnected ? 'Live' : 'Offline'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Stats */}

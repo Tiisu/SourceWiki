@@ -46,12 +46,43 @@ export const loginValidation = [
 ];
 
 export const submissionValidation = [
+  body('fileType')
+    .optional()
+    .isIn(['url', 'pdf'])
+    .withMessage('File type must be url or pdf'),
   body('url')
     .trim()
-    .notEmpty()
-    .withMessage('URL is required')
-    .isURL()
-    .withMessage('Please provide a valid URL'),
+    .custom((value, { req }) => {
+      const fileType = req.body.fileType || 'url';
+      // For URL submissions, URL is required and must be valid
+      if (fileType === 'url') {
+        if (!value || value.trim() === '') {
+          throw new Error('URL is required for URL submissions');
+        }
+        // Basic URL validation
+        try {
+          new URL(value);
+          return true;
+        } catch {
+          throw new Error('Please provide a valid URL');
+        }
+      }
+      // For PDF submissions, URL is optional (can be a placeholder)
+      return true;
+    }),
+  body('fileName')
+    .trim()
+    .custom((value, { req }) => {
+      const fileType = req.body.fileType || 'url';
+      // For PDF submissions, fileName is required
+      if (fileType === 'pdf') {
+        if (!value || value.trim() === '') {
+          throw new Error('File name is required for PDF submissions');
+        }
+      }
+      return true;
+    })
+    .optional(),
   body('title')
     .trim()
     .notEmpty()
