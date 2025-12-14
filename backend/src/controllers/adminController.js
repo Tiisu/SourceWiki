@@ -1,6 +1,8 @@
+
 import User from '../models/User.js';
 import Submission from '../models/Submission.js';
 import CountryStats from '../models/CountryStats.js';
+import ExportUtils from '../utils/exportUtils.js';
 
 class AdminController {
   // ============================================================================
@@ -421,11 +423,295 @@ class AdminController {
       await Submission.findByIdAndDelete(submissionId);
       
       res.json({ message: 'Submission deleted successfully' });
+
     } catch (error) {
       console.error('Submission deletion error:', error);
       res.status(500).json({ 
         error: 'Internal Server Error',
         message: 'Failed to delete submission' 
+      });
+    }
+  }
+
+  // ============================================================================
+  // EXPORT FUNCTIONALITY
+  // ============================================================================
+
+  static async exportSubmissions(req, res) {
+    try {
+      const { format = 'csv', ...filters } = req.query;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10000; // Large limit for exports
+      const skip = (page - 1) * limit;
+
+      // Build filter query
+      const filterQuery = ExportUtils.buildFilterQuery(filters);
+
+      // Get submissions with populated data
+      const submissions = await Submission.find(filterQuery)
+        .populate('submitter', 'username email country')
+        .populate('verifier', 'username email country')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      // Transform data for export
+      const transformedData = ExportUtils.transformSubmissionData(submissions);
+
+      // Get export statistics
+      const stats = await ExportUtils.getExportStats(filters);
+
+      // Set response headers
+      const filename = `submissions_export_${new Date().toISOString().split('T')[0]}`;
+      
+      if (format.toLowerCase() === 'csv') {
+        const csv = await ExportUtils.convertToCSV(transformedData);
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+        res.send(csv);
+      } else if (format.toLowerCase() === 'json') {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
+        res.json({
+          data: transformedData,
+          metadata: {
+            totalRecords: submissions.length,
+            filters: filters,
+            exportDate: new Date().toISOString(),
+            stats: stats
+          }
+        });
+      } else {
+        res.status(400).json({ 
+          error: 'Bad Request',
+          message: 'Invalid format. Use "csv" or "json"' 
+        });
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      res.status(500).json({ 
+        error: 'Internal Server Error',
+        message: 'Failed to export submissions' 
+      });
+    }
+  }
+
+  static async getExportFilters(req, res) {
+    try {
+      const [countries, submitters, verifiers] = await Promise.all([
+        ExportUtils.getAvailableCountries(),
+        ExportUtils.getAvailableSubmitters(),
+        ExportUtils.getAvailableVerifiers()
+      ]);
+
+      res.json({
+        countries,
+        submitters,
+        verifiers,
+        statusOptions: ['pending', 'approved', 'rejected'],
+        categoryOptions: ['primary', 'secondary', 'unreliable'],
+        formatOptions: ['csv', 'json']
+      });
+    } catch (error) {
+      console.error('Export filters fetch error:', error);
+      res.status(500).json({ 
+        error: 'Internal Server Error',
+        message: 'Failed to fetch export filters' 
+      });
+    }
+  }
+
+  // ============================================================================
+  // BATCH OPERATIONS
+  // ============================================================================
+
+  static async batchApproveSubmissions(req, res) {
+    try {
+      const { submissionIds, verifierNotes } = req.body;
+      
+      // Validate input
+      ExportUtils.validateBatchOperation(submissionIds, 'approve');
+      await ExportUtils.logBatchOperation(req.user._id, 'approve', submissionIds, { verifierNotes });
+
+      // Update submissions
+      const result = await Submission.updateMany(
+        { _id: { $in: submissionIds }, status: 'pending' },
+        {
+          status: 'approved',
+          verifier: req.user._id,
+          verifiedAt: new Date(),
+          verifierNotes: verifierNotes || 'Batch approved by admin'
+        }
+      );
+
+      res.json({ 
+        message: 'Submissions approved successfully',
+        modifiedCount: result.modifiedCount
+      });
+    } catch (error) {
+      console.error('Batch approve error:', error);
+      res.status(500).json({ 
+        error: 'Internal Server Error',
+        message: error.message || 'Failed to approve submissions' 
+      });
+    }
+  }
+
+  static async batchRejectSubmissions(req, res) {
+    try {
+      const { submissionIds, verifierNotes } = req.body;
+      
+      // Validate input
+      ExportUtils.validateBatchOperation(submissionIds, 'reject');
+      await ExportUtils.logBatchOperation(req.user._id, 'reject', submissionIds, { verifierNotes });
+
+      // Update submissions
+      const result = await Submission.updateMany(
+        { _id: { $in: submissionIds }, status: 'pending' },
+        {
+          status: 'rejected',
+          verifier: req.user._id,
+          verifiedAt: new Date(),
+          verifierNotes: verifierNotes || 'Batch rejected by admin'
+        }
+      );
+
+      res.json({ 
+        message: 'Submissions rejected successfully',
+        modifiedCount: result.modifiedCount
+      });
+    } catch (error) {
+      console.error('Batch reject error:', error);
+      res.status(500).json({ 
+        error: 'Internal Server Error',
+        message: error.message || 'Failed to reject submissions' 
+      });
+    }
+  }
+
+  static async batchDeleteSubmissions(req, res) {
+    try {
+      const { submissionIds } = req.body;
+      
+      // Validate input
+      ExportUtils.validateBatchOperation(submissionIds, 'delete');
+      await ExportUtils.logBatchOperation(req.user._id, 'delete', submissionIds);
+
+      // Delete submissions
+      const result = await Submission.deleteMany({
+        _id: { $in: submissionIds }
+      });
+
+      res.json({ 
+        message: 'Submissions deleted successfully',
+        deletedCount: result.deletedCount
+      });
+    } catch (error) {
+      console.error('Batch delete error:', error);
+      res.status(500).json({ 
+        error: 'Internal Server Error',
+        message: error.message || 'Failed to delete submissions' 
+      });
+    }
+  }
+
+  static async batchUpdateStatus(req, res) {
+    try {
+      const { submissionIds, status, verifierNotes } = req.body;
+      
+      // Validate input
+      ExportUtils.validateBatchOperation(submissionIds, 'updateStatus');
+      
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Status must be either "approved" or "rejected"'
+        });
+      }
+
+      await ExportUtils.logBatchOperation(req.user._id, 'updateStatus', submissionIds, { 
+        newStatus: status, 
+        verifierNotes 
+      });
+
+      // Update submissions
+      const result = await Submission.updateMany(
+        { _id: { $in: submissionIds }, status: 'pending' },
+        {
+          status: status,
+          verifier: req.user._id,
+          verifiedAt: new Date(),
+          verifierNotes: verifierNotes || `Batch ${status} by admin`
+        }
+      );
+
+      res.json({ 
+        message: `Submissions ${status} successfully`,
+        modifiedCount: result.modifiedCount
+      });
+    } catch (error) {
+      console.error('Batch update status error:', error);
+      res.status(500).json({ 
+        error: 'Internal Server Error',
+        message: error.message || 'Failed to update submission status' 
+      });
+    }
+  }
+
+  static async getBatchOperationPreview(req, res) {
+    try {
+      const { submissionIds } = req.body;
+      
+      if (!Array.isArray(submissionIds) || submissionIds.length === 0) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Submission IDs array is required'
+        });
+      }
+
+      if (submissionIds.length > 1000) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Cannot preview more than 1000 submissions'
+        });
+      }
+
+      // Get submission details
+      const submissions = await Submission.find({ _id: { $in: submissionIds } })
+        .populate('submitter', 'username email country')
+        .populate('verifier', 'username email country')
+        .select('title publisher country status category createdAt')
+        .lean();
+
+      // Group by status for preview
+      const statusGroups = submissions.reduce((groups, submission) => {
+        const status = submission.status;
+        if (!groups[status]) groups[status] = [];
+        groups[status].push(submission);
+        return groups;
+      }, {});
+
+      res.json({
+        totalCount: submissions.length,
+        statusGroups,
+        submissions: submissions.map(sub => ({
+          id: sub._id,
+          title: sub.title,
+          publisher: sub.publisher,
+          country: sub.country,
+          status: sub.status,
+          category: sub.category,
+          submitter: sub.submitter?.username || 'N/A',
+          createdAt: sub.createdAt
+        }))
+      });
+    } catch (error) {
+      console.error('Batch preview error:', error);
+      res.status(500).json({ 
+        error: 'Internal Server Error',
+        message: 'Failed to generate batch operation preview' 
       });
     }
   }

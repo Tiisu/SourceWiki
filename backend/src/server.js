@@ -4,7 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
-import connectDB from './config/database.js';
+
+import connectDB, { checkMongoDBHealth } from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
@@ -67,13 +68,80 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Server is running',
-    timestamp: new Date().toISOString()
-  });
+app.get('/health', async (req, res) => {
+  try {
+    // Get MongoDB health status
+    const dbHealth = await checkMongoDBHealth();
+    
+    const healthStatus = {
+      success: true,
+      message: 'Server is running',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: config.nodeEnv,
+      version: '1.0.0',
+      database: {
+        status: dbHealth.status,
+        readyState: dbHealth.readyState,
+        host: dbHealth.host,
+        port: dbHealth.port,
+        name: dbHealth.name,
+        lastCheck: dbHealth.timestamp
+      }
+    };
+
+    // Determine overall health status
+    const isHealthy = dbHealth.status === 'healthy' && process.uptime() > 0;
+    const statusCode = isHealthy ? 200 : 503;
+
+    res.status(statusCode).json(healthStatus);
+  } catch (error) {
+    console.error('Health check error:', error.message);
+    res.status(503).json({
+      success: false,
+      message: 'Service unavailable',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Detailed system information endpoint (for debugging)
+app.get('/health/detailed', async (req, res) => {
+  try {
+    const dbHealth = await checkMongoDBHealth();
+    
+    const detailedHealth = {
+      success: true,
+      timestamp: new Date().toISOString(),
+      server: {
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        cpu: process.cpuUsage(),
+        environment: config.nodeEnv,
+        port: config.port
+      },
+      database: dbHealth,
+      environment: {
+        nodeEnv: config.nodeEnv,
+        mongodbUri: config.mongodbUri ? 'configured' : 'missing',
+        jwtExpire: config.jwtExpire,
+        jwtRefreshExpire: config.jwtRefreshExpire,
+        frontendUrl: config.frontendUrl
+      }
+    };
+
+    res.json(detailedHealth);
+  } catch (error) {
+    console.error('Detailed health check error:', error.message);
+    res.status(503).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // API routes
