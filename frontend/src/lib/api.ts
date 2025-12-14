@@ -166,13 +166,6 @@ export const authApi = {
 
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/auth/password', { currentPassword, newPassword }),
-<<<<<<< HEAD
-=======
-
-  // Wikimedia OAuth 1.0a (using same endpoints, backend now uses OAuth 1.0a)
-  initiateWikimediaOAuth: () => api.get('/auth/wikimedia/initiate'),
-  linkWikimediaAccount: () => api.post('/auth/wikimedia/link'),
->>>>>>> 718cf8f (Add OAuth 1.0a implementation with fallback support)
 };
 
 // Submission API
