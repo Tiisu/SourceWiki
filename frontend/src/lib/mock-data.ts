@@ -37,23 +37,11 @@ export interface Country {
   flag: string;
 }
 
-export const COUNTRIES: Country[] = [
-  { code: 'US', name: 'United States', flag: '🇺🇸' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
-  { code: 'FR', name: 'France', flag: '🇫🇷' },
-  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
-  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
-  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
-  { code: 'IN', name: 'India', flag: '🇮🇳' },
-  { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
-  { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
-  { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
-  { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
-  { code: 'CN', name: 'China', flag: '🇨🇳' },
-];
+// Import comprehensive country list
+import { ALL_COUNTRIES } from './countries-list';
+
+// Export as COUNTRIES for backwards compatibility (sorted alphabetically by name)
+export const COUNTRIES: Country[] = [...ALL_COUNTRIES];
 
 export const BADGES = [
   { id: 'first-submission', name: 'First Submission', icon: '🌟', description: 'Submitted your first reference' },

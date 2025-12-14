@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './config/swagger.js';
 import connectDB from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
@@ -15,6 +17,10 @@ import systemRoutes from './routes/systemRoutes.js';
 import reportsRoutes from './routes/reportsRoutes.js';
 //importing the config file where all the environment variables are stored and loaded
 import config from './config/config.js';
+import { Server } from 'socket.io';
+import { createServer } from 'http';
+import socketAuth from './middleware/socketAuth.js';
+import setupSocketIO from './config/socketio.js';
 
 
 // Connect to database
@@ -23,7 +29,32 @@ connectDB();
 const app = express();
 
 // Security middleware
-app.use(helmet());
+// Configure Helmet to allow iframe embedding from frontend origins
+const frontendOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+// Apply Helmet with CSP that allows framing from frontend
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Swagger UI needs unsafe-eval
+      imgSrc: ["'self'", "data:", "https:"],
+      frameAncestors: ["'self'", ...frontendOrigins], // Allow framing from frontend origins
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Disable for Swagger UI compatibility
+}));
+
+// Disable CSP for Swagger UI route (we'll set it manually with frame-ancestors)
+app.use('/api/docs', helmet({
+  contentSecurityPolicy: false,
+}));
 
 // CORS configuration
 const allowedOrigins = [
@@ -67,13 +98,80 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Health check endpoint
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     tags: [System]
+ *     description: Check if the server is running
+ *     responses:
+ *       200:
+ *         description: Server is running
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Server is running
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ */
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Server is running',
     timestamp: new Date().toISOString()
   });
+});
+
+// Swagger API Documentation
+// Middleware to allow iframe embedding for Swagger UI
+app.use('/api/docs', (req, res, next) => {
+  // Remove restrictive headers
+  res.removeHeader('X-Frame-Options');
+  
+  // Override CSP to allow framing from frontend origins
+  const frontendUrls = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+  
+  // Build CSP with frame-ancestors that allows frontend origins
+  const cspDirectives = [
+    "default-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "img-src 'self' data: https:",
+    `frame-ancestors 'self' ${frontendUrls.join(' ')}`
+  ].join('; ');
+  
+  res.setHeader('Content-Security-Policy', cspDirectives);
+  next();
+}, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'WikiSource Verifier API Documentation',
+  customfavIcon: '/favicon.ico',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+    tryItOutEnabled: true
+  }
+}));
+
+// Swagger JSON endpoint
+app.get('/api/docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
 });
 
 // API routes
@@ -85,13 +183,61 @@ app.use('/api/countries', countryRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/reports', reportsRoutes);
 
-// Welcome route
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: API root endpoint
+ *     tags: [System]
+ *     description: Get API information and available endpoints
+ *     responses:
+ *       200:
+ *         description: API information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: WikiSource Verifier API
+ *                 version:
+ *                   type: string
+ *                   example: 1.0.0
+ *                 documentation:
+ *                   type: object
+ *                   properties:
+ *                     swagger:
+ *                       type: string
+ *                       example: /api/docs
+ *                     json:
+ *                       type: string
+ *                       example: /api/docs.json
+ *                 endpoints:
+ *                   type: object
+ *                   description: Available API endpoints
+ */
 app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'WikiSource Verifier API',
     version: '1.0.0',
-    documentation: '/api/docs'
+    documentation: {
+      swagger: '/api/docs',
+      json: '/api/docs.json'
+    },
+    endpoints: {
+      auth: '/api/auth',
+      submissions: '/api/submissions',
+      users: '/api/users',
+      admin: '/api/admin',
+      countries: '/api/countries',
+      system: '/api/system',
+      reports: '/api/reports'
+    }
   });
 });
 
@@ -106,10 +252,33 @@ app.use((req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || config.port || 5000;
 
-const server = app.listen(config.port, () => {
+// Create HTTP server
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+const io = new Server(httpServer, {
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      process.env.FRONTEND_URL
+    ].filter(Boolean),
+    credentials: true,
+    methods: ['GET', 'POST']
+  }
+});
+
+// Setup Socket.io with authentication and event handlers
+setupSocketIO(io);
+
+// Make io available globally for use in controllers
+app.set('io', io);
+
+const server = httpServer.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`Socket.io server initialized`);
 });
 
 // Handle unhandled promise rejections
@@ -119,3 +288,4 @@ process.on('unhandledRejection', (err, promise) => {
 });
 
 export default app;
+export { io };

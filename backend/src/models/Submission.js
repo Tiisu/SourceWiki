@@ -3,7 +3,10 @@ import mongoose from 'mongoose';
 const submissionSchema = new mongoose.Schema({
   url: {
     type: String,
-    required: [true, 'URL is required'],
+    required: function() {
+      // URL is required only for URL submissions, optional for PDFs
+      return (this.fileType === 'url' || !this.fileType);
+    },
     trim: true
   },
   title: {

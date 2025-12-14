@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
+import { SocketProvider } from './lib/socket-context';
 import { Navigation } from './components/Navigation';
-import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
+import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile, ApiDocumentation } from './pages';
 import { Toaster } from './components/ui/sonner';
 import { initializeData } from './lib/mock-data';
 
@@ -24,6 +25,7 @@ function AppContent() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/directory" element={<PublicDirectory />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/api-docs" element={<ApiDocumentation />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -58,6 +60,11 @@ function AppContent() {
                       Login / Register
                     </a>
                   </li>
+                  <li>
+                    <a href="/api-docs" className="text-gray-600 hover:text-gray-900">
+                      API Documentation
+                    </a>
+                  </li>
                 </ul>
               </div>
               <div>
@@ -66,7 +73,11 @@ function AppContent() {
                   <li>Wikipedia Verifiability Guidelines</li>
                   <li>Reliable Sources Policy</li>
                   <li>Community Guidelines</li>
-                  <li>API Documentation</li>
+                  <li>
+                    <a href="/api-docs" className="text-blue-600 hover:text-blue-800">
+                      API Documentation
+                    </a>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -87,7 +98,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <SocketProvider>
+        <AppContent />
+      </SocketProvider>
     </AuthProvider>
   );
 }

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, Search, Upload, User, LogOut, Award, Shield, LogIn } from 'lucide-react';
+import { BookOpen, Search, Upload, User, LogOut, Award, Shield, LogIn, Code } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../lib/auth-context';
 import {
@@ -43,6 +43,15 @@ export const Navigation: React.FC = () => {
               >
                 <Search className="h-4 w-4" />
                 <span>Directory</span>
+              </Button>
+
+              <Button
+                variant={isActive('/api-docs') ? 'default' : 'ghost'}
+                onClick={() => navigate('/api-docs')}
+                className="flex items-center space-x-2"
+              >
+                <Code className="h-4 w-4" />
+                <span>API Docs</span>
               </Button>
 
               {user && (
@@ -124,6 +133,15 @@ export const Navigation: React.FC = () => {
           >
             <Search className="h-4 w-4 mr-1" />
             Directory
+          </Button>
+
+          <Button
+            variant={isActive('/api-docs') ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => navigate('/api-docs')}
+          >
+            <Code className="h-4 w-4 mr-1" />
+            API Docs
           </Button>
 
           {user && (

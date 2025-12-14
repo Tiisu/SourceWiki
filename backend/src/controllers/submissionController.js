@@ -1,5 +1,6 @@
 import Submission from '../models/Submission.js';
 import User from '../models/User.js';
+import { emitNewSubmission, emitSubmissionVerified } from '../services/socketService.js';
 
 // @desc    Create new submission
 // @route   POST /api/submissions
@@ -8,15 +9,35 @@ export const createSubmission = async (req, res, next) => {
   try {
     const { url, title, publisher, country, category, wikipediaArticle, fileType, fileName } = req.body;
 
+    // For PDF submissions, use a placeholder URL or the provided URL
+    // The URL field is still required by the schema, so we'll use a placeholder for PDFs
+    const submissionUrl = fileType === 'pdf' 
+      ? (url || `file://pdf/${fileName || 'document.pdf'}`)
+      : url;
+
+    if (!submissionUrl && (!fileType || fileType === 'url')) {
+      return res.status(400).json({
+        success: false,
+        message: 'URL is required for URL submissions'
+      });
+    }
+
+    if (fileType === 'pdf' && !fileName) {
+      return res.status(400).json({
+        success: false,
+        message: 'File name is required for PDF submissions'
+      });
+    }
+
     const submission = await Submission.create({
-      url,
+      url: submissionUrl,
       title,
       publisher,
       country,
       category,
       wikipediaArticle,
       fileType: fileType || 'url',
-      fileName,
+      fileName: fileType === 'pdf' ? fileName : undefined,
       submitter: req.user.id
     });
 
@@ -27,6 +48,9 @@ export const createSubmission = async (req, res, next) => {
 
     const populatedSubmission = await Submission.findById(submission._id)
       .populate('submitter', 'username country');
+
+    // Emit Socket.io event for new submission
+    emitNewSubmission(populatedSubmission);
 
     res.status(201).json({
       success: true,
@@ -281,6 +305,9 @@ export const verifySubmission = async (req, res, next) => {
     submission = await Submission.findById(submission._id)
       .populate('submitter', 'username country')
       .populate('verifier', 'username country');
+
+    // Emit Socket.io event for verified submission
+    emitSubmissionVerified(submission);
 
     res.status(200).json({
       success: true,
