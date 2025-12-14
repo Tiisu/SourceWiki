@@ -547,7 +547,7 @@ useEffect(() => {
                             )}
                             <div>
                               <p className="font-semibold text-gray-900">{sub.title}</p>
-                              {/* <p className="text-sm text-gray-500 mt-1">
+                              <p className="text-sm text-gray-500 mt-1">
                                 <Calendar className="h-3 w-3 inline mr-1" />
                                 {new Date(sub.submittedDate).toLocaleDateString('en-US', {
                                   year: 'numeric',
@@ -556,7 +556,7 @@ useEffect(() => {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })}
-                              </p> */}
+                              </p>
                             </div>
                           </div>
                         </div>
