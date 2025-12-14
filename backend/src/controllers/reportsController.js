@@ -1,13 +1,18 @@
+
 import User from '../models/User.js';
 import Submission from '../models/Submission.js';
 import CountryStats from '../models/CountryStats.js';
+import AppError from '../utils/AppError.js';
+import { ErrorCodes } from '../utils/errorCodes.js';
 
 class ReportsController {
+
   // ============================================================================
   // REPORTS GENERATION
   // ============================================================================
 
-  static async getOverviewReport(req, res) {
+
+  static async getOverviewReport(req, res, next) {
     try {
       const startDate = req.query.startDate ? 
         new Date(req.query.startDate) : 
@@ -162,15 +167,11 @@ class ReportsController {
 
       res.json(report);
     } catch (error) {
-      console.error('Overview report error:', error);
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Failed to generate overview report'
-      });
+      next(error);
     }
   }
 
-  static async getCountryReport(req, res) {
+  static async getCountryReport(req, res, next) {
     try {
       const countryCode = req.params.country?.toUpperCase();
       const startDate = req.query.startDate ? 
@@ -179,10 +180,7 @@ class ReportsController {
       const endDate = req.query.endDate ? new Date(req.query.endDate) : new Date();
 
       if (!countryCode) {
-        return res.status(400).json({
-          error: 'Bad Request',
-          message: 'Country code is required'
-        });
+        return next(new AppError('Country code is required', 400, ErrorCodes.INVALID_INPUT));
       }
 
       const filter = {
@@ -244,10 +242,7 @@ class ReportsController {
       ]);
 
       if (!countryStats) {
-        return res.status(404).json({
-          error: 'Not Found',
-          message: 'Country statistics not found'
-        });
+        return next(new AppError('Country statistics not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
 
       const report = {
@@ -278,15 +273,11 @@ class ReportsController {
 
       res.json(report);
     } catch (error) {
-      console.error('Country report error:', error);
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Failed to generate country report'
-      });
+      next(error);
     }
   }
 
-  static async getUserReport(req, res) {
+  static async getUserReport(req, res, next) {
     try {
       const userId = req.params.userId;
       const startDate = req.query.startDate ? 
@@ -296,10 +287,7 @@ class ReportsController {
 
       const user = await User.findById(userId).select('-password');
       if (!user) {
-        return res.status(404).json({
-          error: 'Not Found',
-          message: 'User not found'
-        });
+        return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
 
       const filter = {
@@ -371,11 +359,7 @@ class ReportsController {
 
       res.json(report);
     } catch (error) {
-      console.error('User report error:', error);
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Failed to generate user report'
-      });
+      next(error);
     }
   }
 }

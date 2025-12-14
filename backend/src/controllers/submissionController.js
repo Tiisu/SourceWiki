@@ -1,5 +1,7 @@
 import Submission from '../models/Submission.js';
 import User from '../models/User.js';
+import AppError from '../utils/AppError.js';
+import { ErrorCodes } from '../utils/errorCodes.js';
 
 // @desc    Create new submission
 // @route   POST /api/submissions
@@ -90,10 +92,7 @@ export const getSubmission = async (req, res, next) => {
       .populate('verifier', 'username country role');
 
     if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found'
-      });
+      return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     res.status(200).json({
@@ -142,26 +141,17 @@ export const updateSubmission = async (req, res, next) => {
     let submission = await Submission.findById(req.params.id);
 
     if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found'
-      });
+      return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     // Check if user is the submitter
     if (submission.submitter.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this submission'
-      });
+      return next(new AppError('Not authorized to update this submission', 403, ErrorCodes.UNAUTHORIZED_ACCESS));
     }
 
     // Can't update if already verified
     if (submission.status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot update a verified submission'
-      });
+      return next(new AppError('Cannot update a verified submission', 400, ErrorCodes.SUBMISSION_LOCKED));
     }
 
     const { title, publisher, wikipediaArticle, category } = req.body;
@@ -189,18 +179,12 @@ export const deleteSubmission = async (req, res, next) => {
     const submission = await Submission.findById(req.params.id);
 
     if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found'
-      });
+      return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     // Check if user is the submitter or admin
     if (submission.submitter.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this submission'
-      });
+      return next(new AppError('Not authorized to delete this submission', 403, ErrorCodes.UNAUTHORIZED_ACCESS));
     }
 
     await submission.deleteOne();
@@ -225,17 +209,11 @@ export const verifySubmission = async (req, res, next) => {
     let submission = await Submission.findById(req.params.id);
 
     if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found'
-      });
+      return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     if (submission.status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: 'Submission has already been verified'
-      });
+      return next(new AppError('Submission has already been verified', 400, ErrorCodes.SUBMISSION_LOCKED));
     }
 
     // Handle different verification outcomes
@@ -247,15 +225,9 @@ export const verifySubmission = async (req, res, next) => {
       submission.status = 'approved';
       submission.credibility = credibility;
     } else if (status === 'approved' && !credibility) {
-      return res.status(400).json({
-        success: false,
-        message: 'Credibility rating is required for approved submissions'
-      });
+      return next(new AppError('Credibility rating is required for approved submissions', 400, ErrorCodes.INVALID_INPUT));
     } else {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status provided'
-      });
+      return next(new AppError('Invalid status provided', 400, ErrorCodes.INVALID_INPUT));
     }
 
     submission.verifier = req.user.id;
