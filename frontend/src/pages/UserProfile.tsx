@@ -30,11 +30,12 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
+import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
 
 /* ------------------ BADGES ------------------ */
 
-const AVAILABLE_BADGES = [
+const BADGE_RULES = [
   {
     id: 'first-submission',
     name: 'First Steps',
@@ -83,10 +84,19 @@ const AVAILABLE_BADGES = [
 
 interface Submission {
   id: string;
-  title: string;
-  status: 'verified' | 'pending' | 'rejected';
+  count: number;
+  submissions: {id: string; url: String; title: String; publisher: String; country: String; Category: String; status: String; credibility: String;
+  fileType:String;
+  fileName: String;}[];
+  title?: string;
   points?: number;
-  submittedDate: string;
+  submittedDate?: string;
+  _id?: string;
+  createdAt?: string;
+  status?: 'verified' | 'pending' | 'rejected';
+  total?: number;
+  page?: number;
+  pages?: number;
 }
 
 /* ------------------ HELPERS ------------------ */
@@ -105,7 +115,7 @@ const getCountryFlag = (country?: string) => {
 /* ------------------ COMPONENT ------------------ */
 
 export const UserProfile = () => {
-  const { user } = useAuth();
+  const { user,token } = useAuth();
 
   /* ---------- SAFE USER ---------- */
   const safeUser = {
@@ -119,100 +129,58 @@ export const UserProfile = () => {
   };
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissions, setSubmissions] = useState<Submission>({id: '', count: 0, submissions: []});
   const [loading, setLoading] = useState(true);
+  const points = 10;
 
   /* ------------------ FETCH SUBMISSIONS ------------------ */
 
-  useEffect(() => {
-    const fetchSubmissions = async () => {
-      try {
-        setLoading(true);
+useEffect(() => {
+  const fetchSubmissions = async () => {
+    try {
+      setLoading(true);
+      const data = await Promise.resolve(submissionApi.getMy());
+      setSubmissions(data);
+      console.log(submissions);
+      
+    } catch (error) {
+      toast.error('Failed to load submissions');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        /**
-         * Mock submission data - Replace this later with real API call
-         * using authenticated user ID
-         */
-        const mockSubmissions: Submission[] = [
-          {
-            id: '1',
-            title: 'Traditional Medicine Reference - Morula Tree',
-            status: 'verified',
-            points: 50,
-            submittedDate: '2024-11-15T10:30:00',
-          },
-          {
-            id: '2',
-            title: 'Cultural Practice - Setswana Wedding Customs',
-            status: 'verified',
-            points: 45,
-            submittedDate: '2024-11-20T14:20:00',
-          },
-          {
-            id: '3',
-            title: 'Historical Event - Botswana Independence',
-            status: 'pending',
-            points: 0,
-            submittedDate: '2024-12-01T09:15:00',
-          },
-          {
-            id: '4',
-            title: 'Traditional Music - Borankana Dance',
-            status: 'verified',
-            points: 40,
-            submittedDate: '2024-12-05T16:45:00',
-          },
-          {
-            id: '5',
-            title: 'Language Reference - Setswana Proverbs',
-            status: 'pending',
-            points: 0,
-            submittedDate: '2024-12-10T11:00:00',
-          },
-          {
-            id: '6',
-            title: 'Incomplete Citation',
-            status: 'rejected',
-            points: 0,
-            submittedDate: '2024-12-08T13:30:00',
-          },
-        ];
-        
-        setSubmissions(mockSubmissions);
-      } catch {
-        toast.error('Failed to load submissions');
-      } finally {
-        setLoading(false);
-      }
-    };
+  fetchSubmissions();
+  
+}, [user]);
 
-    if (user) fetchSubmissions();
-  }, [user]);
 
   /* ------------------ STATS ------------------ */
 
   const stats = useMemo(() => {
-    const total = submissions.length;
-    const verified = submissions.filter(s => s.status === 'verified').length;
-    const pending = submissions.filter(s => s.status === 'pending').length;
-    const rejected = submissions.filter(s => s.status === 'rejected').length;
+    const total = submissions?.count;
+    const verified = 0// submissions.filter(s => s.status === 'verified').length;
+    const pending = 0//submissions.filter(s => s.status === 'pending').length;
+    const rejected = 0//submissions.filter(s => s.status === 'rejected').length;
 
     return {
       total,
       verified,
       pending,
       rejected,
-      pointsEarned: submissions.reduce(
-        (sum, s) => sum + (s.points ?? 0),
-        0
-      ),
+      pointsEarned: submissions?.count //reduce(
+        // (sum, s) => sum + (s.points ?? 0),
+        // 0
+      // ),
     };
   }, [submissions]);
+
+
 
   /* ------------------ BADGE LOGIC ------------------ */
 
   const earnedBadges = useMemo(() => {
-    return AVAILABLE_BADGES.filter(
+    return BADGE_RULES.filter(
       badge => safeUser.points >= badge.pointsRequired
     );
   }, [safeUser.points]);
@@ -392,7 +360,7 @@ export const UserProfile = () => {
                     </div>
                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg">
                       <p className="text-sm text-purple-600 font-medium">Badges Unlocked</p>
-                      <p className="text-2xl font-bold text-purple-700">{earnedBadges.length}/{AVAILABLE_BADGES.length}</p>
+                      <p className="text-2xl font-bold text-purple-700">{earnedBadges.length}/{BADGE_RULES.length}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -410,31 +378,31 @@ export const UserProfile = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {earnedBadges.length < AVAILABLE_BADGES.length ? (
+                  {earnedBadges.length < BADGE_RULES.length ? (
                     <div>
                       <div className="flex items-center gap-4 mb-4">
                         <div className="text-5xl">
-                          {AVAILABLE_BADGES[earnedBadges.length].icon}
+                          {BADGE_RULES[earnedBadges.length].icon}
                         </div>
                         <div className="flex-1">
                           <p className="font-bold text-lg">
-                            {AVAILABLE_BADGES[earnedBadges.length].name}
+                            {BADGE_RULES[earnedBadges.length].name}
                           </p>
                           <p className="text-sm text-gray-600">
-                            {AVAILABLE_BADGES[earnedBadges.length].description}
+                            {BADGE_RULES[earnedBadges.length].description}
                           </p>
                         </div>
                       </div>
                       <Progress
                         value={
                           (safeUser.points /
-                            AVAILABLE_BADGES[earnedBadges.length].pointsRequired) *
+                            BADGE_RULES[earnedBadges.length].pointsRequired) *
                           100
                         }
                         className="h-3"
                       />
                       <p className="text-sm text-gray-500 mt-2">
-                        {AVAILABLE_BADGES[earnedBadges.length].pointsRequired - safeUser.points} points to go
+                        {BADGE_RULES[earnedBadges.length].pointsRequired - safeUser.points} points to go
                       </p>
                     </div>
                   ) : (
@@ -456,22 +424,20 @@ export const UserProfile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {submissions.length > 0 ? (
+                  {submissions.submissions.length > 0 ? (
                     <div className="space-y-3">
-                      {submissions.slice(0, 3).map(sub => (
+                      {submissions.submissions.slice(0, 3).map(sub => (
                         <div key={sub.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                           {sub.status === 'verified' && <CheckCircle className="h-5 w-5 text-green-600" />}
                           {sub.status === 'pending' && <Clock className="h-5 w-5 text-yellow-600" />}
                           {sub.status === 'rejected' && <XCircle className="h-5 w-5 text-red-600" />}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{sub.title}</p>
-                            <p className="text-xs text-gray-500">
+                            {/* <p className="text-xs text-gray-500">
                               {new Date(sub.submittedDate).toLocaleDateString()}
-                            </p>
+                            </p> */}
                           </div>
-                          {sub.points && sub.points > 0 && (
-                            <span className="text-sm font-semibold text-blue-600">+{sub.points}</span>
-                          )}
+                          
                         </div>
                       ))}
                     </div>
@@ -491,20 +457,20 @@ export const UserProfile = () => {
                   <div>
                     <p className="text-sm text-gray-500">Badge Progress</p>
                     <p className="text-2xl font-bold">
-                      {earnedBadges.length} / {AVAILABLE_BADGES.length}
+                      {earnedBadges.length} / {BADGE_RULES.length}
                     </p>
                   </div>
                   <Award className="h-12 w-12 text-yellow-600" />
                 </div>
                 <Progress 
-                  value={(earnedBadges.length / AVAILABLE_BADGES.length) * 100} 
+                  value={(earnedBadges.length / BADGE_RULES.length) * 100} 
                   className="mt-4 h-3"
                 />
               </CardContent>
             </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {AVAILABLE_BADGES.map(badge => {
+              {BADGE_RULES.map(badge => {
                 const earned = safeUser.points >= badge.pointsRequired;
                 return (
                   <Card
@@ -556,7 +522,7 @@ export const UserProfile = () => {
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
               </div>
-            ) : submissions.length === 0 ? (
+            ) : submissions.submissions.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Activity className="h-12 w-12 mx-auto mb-4 text-gray-400" />
@@ -566,7 +532,7 @@ export const UserProfile = () => {
               </Card>
             ) : (
               <div className="space-y-4">
-                {submissions.map(sub => (
+                {submissions.submissions.map(sub => (
                   <Card key={sub.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="pt-6">
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -583,7 +549,7 @@ export const UserProfile = () => {
                             )}
                             <div>
                               <p className="font-semibold text-gray-900">{sub.title}</p>
-                              <p className="text-sm text-gray-500 mt-1">
+                              {/* <p className="text-sm text-gray-500 mt-1">
                                 <Calendar className="h-3 w-3 inline mr-1" />
                                 {new Date(sub.submittedDate).toLocaleDateString('en-US', {
                                   year: 'numeric',
@@ -592,20 +558,20 @@ export const UserProfile = () => {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })}
-                              </p>
+                              </p> */}
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
-                          {sub.points !== undefined && sub.points > 0 && (
+                          
                             <div className="flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full">
                               <Award className="h-4 w-4 text-blue-600" />
                               <span className="text-sm font-semibold text-blue-700">
-                                +{sub.points} pts
+                                +{points} pts
                               </span>
                             </div>
-                          )}
+                        
                           
                           <Badge
                             variant={
