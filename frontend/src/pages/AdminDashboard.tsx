@@ -1,3 +1,5 @@
+
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -5,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Input } from '../components/ui/input';
+import { Checkbox } from '../components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -28,8 +32,10 @@ import {
   getCountryName,
   getStatusColor,
 } from '../lib/mock-data';
-import { submissionApi } from '../lib/api';
+import { submissionApi, adminApi } from '../lib/api';
 import { toast } from 'sonner';
+import ExportDialog from '../components/ExportDialog';
+import BatchOperations from '../components/BatchOperations';
 
 interface Submission {
   id: string;
@@ -52,6 +58,7 @@ import { CheckCircle, XCircle, Eye, Clock, TrendingUp, Users, FileCheck } from '
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [verificationNotes, setVerificationNotes] = useState('');
@@ -59,18 +66,40 @@ export const AdminDashboard: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [showDialog, setShowDialog] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [countryFilter, setCountryFilter] = useState<string>('all');
 
   useEffect(() => {
     loadSubmissions();
   }, [user]);
+
 
   const loadSubmissions = async () => {
     if (!user) return;
     
     setLoading(true);
     try {
-      // Load pending submissions for verifier's country
-      if (user.role === 'verifier' || user.role === 'admin') {
+      // Load submissions using admin API for admin users, or regular API for verifiers
+      if (user.role === 'admin') {
+        const params = {
+          page: currentPage,
+          limit: 50,
+          search: searchTerm || undefined,
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          country: countryFilter !== 'all' ? countryFilter : undefined,
+        };
+        
+        const response = await adminApi.getSubmissions(params);
+        if (response.success) {
+          setSubmissions(response.submissions || []);
+          setTotalPages(response.totalPages || 1);
+        }
+      } else if (user.role === 'verifier') {
+        // Load pending submissions for verifier's country
         const response = await submissionApi.getPendingForCountry();
         if (response.success) {
           setSubmissions(response.submissions);
@@ -242,6 +271,93 @@ export const AdminDashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+
+      {/* Admin Controls - Only show for admins */}
+      {user?.role === 'admin' && (
+        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+          {/* Search and Filters */}
+          <Card className="flex-1">
+            <CardHeader>
+              <CardTitle className="text-lg">Search & Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Search</label>
+                  <Input
+                    placeholder="Search submissions..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && loadSubmissions()}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Country</label>
+                  <Select value={countryFilter} onValueChange={setCountryFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Countries</SelectItem>
+                      {/* Add dynamic country options here */}
+                      <SelectItem value="US">United States</SelectItem>
+                      <SelectItem value="UK">United Kingdom</SelectItem>
+                      <SelectItem value="CA">Canada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-end">
+                  <Button onClick={loadSubmissions} disabled={loading} className="w-full">
+                    {loading ? 'Loading...' : 'Apply Filters'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Export Controls */}
+          <Card className="lg:w-80">
+            <CardHeader>
+              <CardTitle className="text-lg">Export & Batch Operations</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ExportDialog onExportComplete={loadSubmissions} />
+              
+              {selectedSubmissionIds.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    // Show batch operations
+                  }}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Batch Operations ({selectedSubmissionIds.length})
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="pending" className="space-y-4">
