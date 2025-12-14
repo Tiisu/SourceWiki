@@ -95,9 +95,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ onExportComplete }) 
     try {
       // Remove 'all' values from filters for cleaner export
       const exportFilters = { ...filters };
-      if (exportFilters.status === 'all') delete exportFilters.status;
-      if (exportFilters.category === 'all') delete exportFilters.category;
-      if (exportFilters.country === 'all') delete exportFilters.country;
+      if (exportFilters.status === 'all') delete (exportFilters as Record<string, any>).status;
+      if (exportFilters.category === 'all') delete (exportFilters as Record<string, any>).category;
+      if (exportFilters.country === 'all') delete (exportFilters as Record<string, any>).country;
 
       await adminApi.exportSubmissions(exportFilters);
       toast.success('Export completed successfully');
@@ -174,7 +174,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ onExportComplete }) 
             <Label htmlFor="format">Export Format</Label>
             <Select
               value={filters.format}
-              onValueChange={(value) => handleFilterChange('format', value as 'csv' | 'json')}
+              onValueChange={(value: string) => handleFilterChange('format', value as 'csv' | 'json')}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -195,7 +195,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ onExportComplete }) 
               <Label htmlFor="status">Status</Label>
               <Select
                 value={filters.status}
-                onValueChange={(value) => handleFilterChange('status', value)}
+                onValueChange={(value: string) => handleFilterChange('status', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -215,7 +215,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ onExportComplete }) 
               <Label htmlFor="category">Category</Label>
               <Select
                 value={filters.category}
-                onValueChange={(value) => handleFilterChange('category', value)}
+                onValueChange={(value: string) => handleFilterChange('category', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -235,7 +235,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ onExportComplete }) 
               <Label htmlFor="country">Country</Label>
               <Select
                 value={filters.country}
-                onValueChange={(value) => handleFilterChange('country', value)}
+                onValueChange={(value: string) => handleFilterChange('country', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -269,7 +269,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ onExportComplete }) 
               <Label htmlFor="submitter">Submitter</Label>
               <Select
                 value={filters.submitter}
-                onValueChange={(value) => handleFilterChange('submitter', value)}
+                onValueChange={(value: string) => handleFilterChange('submitter', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All submitters" />
@@ -289,7 +289,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ onExportComplete }) 
               <Label htmlFor="verifier">Verifier</Label>
               <Select
                 value={filters.verifier}
-                onValueChange={(value) => handleFilterChange('verifier', value)}
+                onValueChange={(value: string) => handleFilterChange('verifier', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All verifiers" />
