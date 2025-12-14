@@ -57,8 +57,8 @@ const userSchema = new mongoose.Schema({
       expires: 604800 // 7 days in seconds
     }
   }],
-  // Wikimedia OAuth 1.0a integration (optional)
-  wikimediaOAuth1: {
+  // Wikimedia OAuth 2.0 integration (optional)
+  wikimediaOAuth2: {
     wikimediaId: {
       type: String,
       sparse: true, // Allows null values but enforces uniqueness when present
@@ -66,26 +66,11 @@ const userSchema = new mongoose.Schema({
     },
     username: String,
     accessToken: String, // In production, encrypt this
-    accessTokenSecret: String, // In production, encrypt this (OAuth 1.0a uses token + secret)
-    linkedAt: Date,
-    editCount: Number,
-    groups: [String], // e.g., 'autoconfirmed', 'editor', etc.
-    rights: [String], // User rights on Wikimedia
-  },
-  // Wikimedia OAuth 2.0 integration (Deprecated - kept for backward compatibility)
-  wikimediaOAuth2: {
-    wikimediaId: {
-      type: String,
-      sparse: true,
-      unique: true
-    },
-    username: String,
-    accessToken: String,
-    refreshToken: String,
+    refreshToken: String, // In production, encrypt this
     tokenExpiresAt: Date,
     linkedAt: Date,
     editCount: Number,
-    groups: [String],
+    groups: [String], // e.g., 'autoconfirmed', 'editor', etc.
   }
 }, {
   timestamps: true
@@ -119,11 +104,11 @@ userSchema.methods.getPublicProfile = function() {
     badges: this.badges,
     joinDate: this.createdAt,
     isActive: this.isActive,
-    wikimediaAccount: (this.wikimediaOAuth1?.wikimediaId || this.wikimediaOAuth2?.wikimediaId) ? {
-      username: this.wikimediaOAuth1?.username || this.wikimediaOAuth2?.username,
-      editCount: this.wikimediaOAuth1?.editCount || this.wikimediaOAuth2?.editCount,
-      linkedAt: this.wikimediaOAuth1?.linkedAt || this.wikimediaOAuth2?.linkedAt,
-      groups: this.wikimediaOAuth1?.groups || this.wikimediaOAuth2?.groups,
+    wikimediaAccount: this.wikimediaOAuth2?.wikimediaId ? {
+      username: this.wikimediaOAuth2.username,
+      editCount: this.wikimediaOAuth2.editCount,
+      linkedAt: this.wikimediaOAuth2.linkedAt,
+      groups: this.wikimediaOAuth2.groups,
     } : null
   };
 };
