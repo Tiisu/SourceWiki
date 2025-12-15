@@ -1,4 +1,9 @@
 import { body, validationResult } from 'express-validator';
+import xss from 'xss';
+
+
+const sanitizeXSS = value => xss(value);
+
 
 export const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -14,9 +19,11 @@ export const validate = (req, res, next) => {
   next();
 };
 
+
 export const registerValidation = [
   body('username')
     .trim()
+    .customSanitizer(sanitizeXSS)
     .isLength({ min: 3, max: 30 })
     .withMessage('Username must be between 3 and 30 characters')
     .matches(/^[a-zA-Z0-9_]+$/)
@@ -35,15 +42,18 @@ export const registerValidation = [
     .withMessage('Country is required')
 ];
 
+
 export const loginValidation = [
   body('username')
     .trim()
+    .customSanitizer(sanitizeXSS)
     .notEmpty()
     .withMessage('Username is required'),
   body('password')
     .notEmpty()
     .withMessage('Password is required')
 ];
+
 
 export const submissionValidation = [
   body('url')
@@ -54,6 +64,7 @@ export const submissionValidation = [
     .withMessage('Please provide a valid URL'),
   body('title')
     .trim()
+    .customSanitizer(sanitizeXSS)
     .notEmpty()
     .withMessage('Title is required')
     .isLength({ max: 200 })
@@ -72,6 +83,7 @@ export const submissionValidation = [
     .isIn(['primary', 'secondary', 'unreliable'])
     .withMessage('Category must be primary, secondary, or unreliable')
 ];
+
 
 export const verificationValidation = [
   body('status')
