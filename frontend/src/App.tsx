@@ -2,9 +2,11 @@ import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
 import { Navigation } from './components/Navigation';
-import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
+
+import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile, CountryPage } from './pages';
 import { Toaster } from './components/ui/sonner';
 import { initializeData } from './lib/mock-data';
+import React from 'react';
 
 function AppContent() {
   useEffect(() => {
@@ -17,6 +19,7 @@ function AppContent() {
       <div className="min-h-screen bg-white">
         <Navigation />
         <main>
+
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
@@ -24,6 +27,7 @@ function AppContent() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/directory" element={<PublicDirectory />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/country/:countryCode" element={<CountryPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
