@@ -1,4 +1,8 @@
 import { body, validationResult } from 'express-validator';
+import xss from 'xss';
+
+const sanitizeXSS = value => xss(value);
+
 
 export const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -17,6 +21,7 @@ export const validate = (req, res, next) => {
 export const registerValidation = [
   body('username')
     .trim()
+    .customSanitizer(sanitizeXSS)
     .isLength({ min: 3, max: 30 })
     .withMessage('Username must be between 3 and 30 characters')
     .matches(/^[a-zA-Z0-9_]+$/)
@@ -38,6 +43,7 @@ export const registerValidation = [
 export const loginValidation = [
   body('username')
     .trim()
+    .customSanitizer(sanitizeXSS)
     .notEmpty()
     .withMessage('Username is required'),
   body('password')
@@ -54,6 +60,7 @@ export const submissionValidation = [
     .withMessage('Please provide a valid URL'),
   body('title')
     .trim()
+    .customSanitizer(sanitizeXSS)
     .notEmpty()
     .withMessage('Title is required')
     .isLength({ max: 200 })
