@@ -1,10 +1,13 @@
+
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
 import { Navigation } from './components/Navigation';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
 import { Toaster } from './components/ui/sonner';
 import { initializeData } from './lib/mock-data';
+import React from 'react';
 
 function AppContent() {
   useEffect(() => {
@@ -20,10 +23,36 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/submit" element={<SubmissionForm />} />
-            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/directory" element={<PublicDirectory />} />
-            <Route path="/profile" element={<UserProfile />} />
+            
+            {/* Protected Routes */}
+            <Route 
+              path="/submit" 
+              element={
+                <ProtectedRoute>
+                  <SubmissionForm />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <UserProfile />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Admin Routes - Require admin role */}
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

@@ -1,24 +1,26 @@
+
 import jwt from 'jsonwebtoken';
+import config from '../config/config.js';
 
 export const generateAccessToken = (userId) => {
   return jwt.sign(
     { id: userId },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE || '15m' }
+    config.jwtSecret,
+    { expiresIn: config.jwtExpire }
   );
 };
 
 export const generateRefreshToken = (userId) => {
   return jwt.sign(
     { id: userId },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRE || '7d' }
+    config.jwtRefreshSecret,
+    { expiresIn: config.jwtRefreshExpire }
   );
 };
 
 export const verifyRefreshToken = (token) => {
   try {
-    return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    return jwt.verify(token, config.jwtRefreshSecret);
   } catch (error) {
     return null;
   }
@@ -30,8 +32,8 @@ export const sendTokenResponse = (user, statusCode, res) => {
 
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: config.nodeEnv === 'production',
+    sameSite: config.nodeEnv === 'production' ? 'strict' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   };
 
