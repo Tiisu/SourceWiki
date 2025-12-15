@@ -1,6 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi, api } from './api';
 import { toast } from 'sonner';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 export interface User {
   id: string;
@@ -20,13 +22,19 @@ interface AuthContextType {
   logout: () => void;
   register: (username: string, email: string, password: string, country: string) => Promise<boolean>;
   updateUser: (updates: Partial<User>) => void;
+  isConnected: boolean;
+  connectionError: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Use WebSocket hook for connection state
+  const { isConnected, connectionError, on } = useWebSocket();
 
   useEffect(() => {
     // Check if user is logged in on mount
@@ -45,6 +53,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     checkAuth();
   }, []);
+
+  // Handle real-time submission verification events
+  useEffect(() => {
+    if (!user) return;
+
+    const handleSubmissionVerified = (data: any) => {
+      if (data.submitter.id === user.id) {
+        // This is our submission that got verified
+        const message = data.status === 'approved' 
+          ? `Your submission "${data.title}" was approved as ${data.credibility}!`
+          : `Your submission "${data.title}" was rejected.`;
+        
+        toast.success(message);
+        
+        // Update user points if submission was approved
+        if (data.status === 'approved') {
+          const points = data.credibility === 'credible' ? 25 : 10;
+          updateUser({ points: user.points + points });
+        }
+      }
+    };
+
+    const unsubscribe = on('submission:verified', handleSubmissionVerified);
+    
+    return unsubscribe;
+  }, [user, on]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -121,7 +155,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, updateUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      register, 
+      updateUser,
+      isConnected,
+      connectionError
+    }}>
       {children}
     </AuthContext.Provider>
   );

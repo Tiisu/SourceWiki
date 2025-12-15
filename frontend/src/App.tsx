@@ -1,10 +1,13 @@
+
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
-import { Navigation } from './components/Navigation';
+import { Navigation } from './components/Navigation'; // Keep this as named import
 import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
 import { Toaster } from './components/ui/sonner';
+import NotificationSystem from './components/NotificationSystem'; // Change to default import
 import { initializeData } from './lib/mock-data';
+import React from 'react';
 
 function AppContent() {
   useEffect(() => {
@@ -16,6 +19,7 @@ function AppContent() {
     <Router>
       <div className="min-h-screen bg-white">
         <Navigation />
+
         <main>
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -27,6 +31,10 @@ function AppContent() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        
+        {/* Real-time Notification System */}
+        <NotificationSystem />
+        
         <Toaster position="top-right" />
         
         {/* Footer */}

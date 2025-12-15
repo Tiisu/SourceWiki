@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+
+
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -28,7 +30,9 @@ import {
   getStatusColor,
 } from '../lib/mock-data';
 import { submissionApi } from '../lib/api';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { toast } from 'sonner';
+
 
 interface Submission {
   id: string;
@@ -45,6 +49,10 @@ interface Submission {
   verifiedAt?: string;
   createdAt: string;
   updatedAt: string;
+  mediaType?: string;
+  credibility?: 'credible' | 'unreliable';
+  submitterName?: string;
+  submittedDate?: string;
 }
 import { CheckCircle, XCircle, Eye, Clock, TrendingUp, Users, FileCheck } from 'lucide-react';
 
@@ -52,8 +60,10 @@ interface AdminDashboardProps {
   onNavigate: (page: string) => void;
 }
 
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
+  const { on, isConnected } = useWebSocket();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [verificationNotes, setVerificationNotes] = useState('');
@@ -62,9 +72,56 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   const [showDialog, setShowDialog] = useState(false);
   const [loading, setLoading] = useState(false);
 
+
   useEffect(() => {
     loadSubmissions();
   }, [user]);
+
+  // Real-time WebSocket event handlers
+  useEffect(() => {
+    if (!user || (user.role !== 'admin' && user.role !== 'verifier')) return;
+
+    const handleNewSubmission = (data: any) => {
+      console.log('📝 Real-time: New submission received:', data);
+      // Add new submission to the list if it matches user's scope
+      if (user.role === 'admin' || user.country === data.country) {
+        loadSubmissions(); // Refresh the list
+        toast.info(data.message, {
+          duration: 4000,
+          position: 'bottom-right'
+        });
+      }
+    };
+
+    const handleSubmissionVerified = (data: any) => {
+      console.log('✅ Real-time: Submission verification received:', data);
+      loadSubmissions(); // Refresh the list
+    };
+
+    const handleSubmissionUpdated = (data: any) => {
+      console.log('📝 Real-time: Submission update received:', data);
+      loadSubmissions(); // Refresh the list
+    };
+
+    const handleSubmissionDeleted = (data: any) => {
+      console.log('🗑️ Real-time: Submission deletion received:', data);
+      loadSubmissions(); // Refresh the list
+    };
+
+    // Subscribe to real-time events
+    const unsubscribeCreated = on('submission:created', handleNewSubmission);
+    const unsubscribeVerified = on('submission:verified', handleSubmissionVerified);
+    const unsubscribeUpdated = on('submission:updated', handleSubmissionUpdated);
+    const unsubscribeDeleted = on('submission:deleted', handleSubmissionDeleted);
+
+    // Cleanup subscriptions
+    return () => {
+      unsubscribeCreated();
+      unsubscribeVerified();
+      unsubscribeUpdated();
+      unsubscribeDeleted();
+    };
+  }, [user, on]);
 
   const loadSubmissions = async () => {
     if (!user) return;

@@ -1,7 +1,9 @@
+
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BookOpen, Search, Upload, User, LogOut, Award, Shield, LogIn } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../lib/auth-context';
+import NotificationSystem from './NotificationSystem';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
+import React from 'react';
 
 export const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
@@ -71,7 +74,15 @@ export const Navigation: React.FC = () => {
             </div>
           </div>
 
+
           <div className="flex items-center space-x-4">
+            {user && (
+              <NotificationSystem 
+                showBadge={true}
+                maxNotifications={50}
+              />
+            )}
+            
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

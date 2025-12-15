@@ -1,9 +1,12 @@
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 import connectDB from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
 import authRoutes from './routes/authRoutes.js';
@@ -13,6 +16,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import countryRoutes from './routes/countryRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
 import reportsRoutes from './routes/reportsRoutes.js';
+import WebSocketService from './services/websocket.js';
 //importing the config file where all the environment variables are stored and loaded
 import config from './config/config.js';
 
@@ -115,10 +119,41 @@ app.use((req, res) => {
   });
 });
 
+
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(config.port, () => {
+// Create HTTP server
+const httpServer = createServer(app);
+
+// Initialize Socket.IO with CORS configuration
+const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST']
+  },
+  transports: ['websocket', 'polling']
+});
+
+// Initialize WebSocket Service
+const webSocketService = new WebSocketService(io);
+
+// Make WebSocket service available globally
+global.webSocketService = webSocketService;
+
+
+const server = httpServer.listen(config.port, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`🚀 WebSocket server ready for real-time connections`);
 });
 
 // Handle unhandled promise rejections

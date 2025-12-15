@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import { ErrorCodes } from '../utils/errorCodes.js';
 
+
 // @desc    Create new submission
 // @route   POST /api/submissions
 // @access  Private
@@ -29,6 +30,11 @@ export const createSubmission = async (req, res, next) => {
 
     const populatedSubmission = await Submission.findById(submission._id)
       .populate('submitter', 'username country');
+
+    // Emit real-time notification for new submission
+    if (global.webSocketService) {
+      global.webSocketService.broadcastSubmissionCreated(populatedSubmission);
+    }
 
     res.status(201).json({
       success: true,
@@ -156,11 +162,17 @@ export const updateSubmission = async (req, res, next) => {
 
     const { title, publisher, wikipediaArticle, category } = req.body;
 
+
     submission = await Submission.findByIdAndUpdate(
       req.params.id,
       { title, publisher, wikipediaArticle, category },
       { new: true, runValidators: true }
     ).populate('submitter', 'username country');
+
+    // Emit real-time notification for submission update
+    if (global.webSocketService) {
+      global.webSocketService.broadcastSubmissionUpdated(submission, req.user);
+    }
 
     res.status(200).json({
       success: true,
@@ -187,7 +199,13 @@ export const deleteSubmission = async (req, res, next) => {
       return next(new AppError('Not authorized to delete this submission', 403, ErrorCodes.UNAUTHORIZED_ACCESS));
     }
 
+
     await submission.deleteOne();
+
+    // Emit real-time notification for submission deletion
+    if (global.webSocketService) {
+      global.webSocketService.broadcastSubmissionDeleted(submission, req.user);
+    }
 
     res.status(200).json({
       success: true,
@@ -250,9 +268,15 @@ export const verifySubmission = async (req, res, next) => {
       $inc: { points: 5 }
     });
 
+
     submission = await Submission.findById(submission._id)
       .populate('submitter', 'username country')
       .populate('verifier', 'username country');
+
+    // Emit real-time notification for submission verification
+    if (global.webSocketService) {
+      global.webSocketService.broadcastSubmissionVerified(submission, req.user);
+    }
 
     res.status(200).json({
       success: true,
