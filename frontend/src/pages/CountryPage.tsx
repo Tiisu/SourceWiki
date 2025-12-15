@@ -51,15 +51,49 @@ export const CountryPage: React.FC<CountryPageProps> = () => {
   const pendingSources = countrySubmissions.filter(sub => sub.status === 'pending');
   const unreliableSources = countrySubmissions.filter(sub => sub.reliability === 'unreliable');
 
-  // Get country-specific metadata (simulated)
-  const countryMetadata = {
-    population: '31.4 million',
-    capital: 'Accra',
-    languages: 'English',
-    region: 'West Africa',
-    wikipedia: `https://en.wikipedia.org/wiki/${countryName.replace(' ', '_')}`,
-    wikidata: `https://www.wikidata.org/wiki/Q${Math.floor(Math.random() * 1000000)}`
+
+  // Get country-specific metadata
+  const getCountryMetadata = (code: string, name: string) => {
+    const metadataMap: { [key: string]: any } = {
+      'GH': { population: '31.4 million', capital: 'Accra', languages: 'English', region: 'West Africa' },
+      'NG': { population: '223.8 million', capital: 'Abuja', languages: 'English', region: 'West Africa' },
+      'KE': { population: '55.1 million', capital: 'Nairobi', languages: 'English, Swahili', region: 'East Africa' },
+      'ZA': { population: '60.6 million', capital: 'Pretoria (Executive), Cape Town (Legislative), Bloemfontein (Judicial)', languages: '11 official languages', region: 'Southern Africa' },
+      'EG': { population: '112.7 million', capital: 'Cairo', languages: 'Arabic', region: 'North Africa' },
+      'ET': { population: '126.5 million', capital: 'Addis Ababa', languages: 'Amharic, English', region: 'East Africa' },
+      'MA': { population: '37.8 million', capital: 'Rabat', languages: 'Arabic, Berber', region: 'North Africa' },
+      'TN': { population: '12.5 million', capital: 'Tunis', languages: 'Arabic', region: 'North Africa' },
+      'UG': { population: '50.3 million', capital: 'Kampala', languages: 'English, Swahili', region: 'East Africa' },
+      'TZ': { population: '67.4 million', capital: 'Dodoma (official), Dar es Salaam (largest city)', languages: 'Swahili, English', region: 'East Africa' },
+      'RW': { population: '14.1 million', capital: 'Kigali', languages: 'Kinyarwanda, English, French', region: 'East Africa' },
+      'MZ': { population: '34.6 million', capital: 'Maputo', languages: 'Portuguese', region: 'Southern Africa' },
+      'MG': { population: '31.1 million', capital: 'Antananarivo', languages: 'Malagasy, French, English', region: 'Southern Africa' },
+      'US': { population: '339.1 million', capital: 'Washington, D.C.', languages: 'English', region: 'North America' },
+      'GB': { population: '67.8 million', capital: 'London', languages: 'English', region: 'Europe' },
+      'CA': { population: '40.1 million', capital: 'Ottawa', languages: 'English, French', region: 'North America' },
+      'AU': { population: '26.5 million', capital: 'Canberra', languages: 'English', region: 'Oceania' },
+      'DE': { population: '84.3 million', capital: 'Berlin', languages: 'German', region: 'Europe' },
+      'FR': { population: '65.6 million', capital: 'Paris', languages: 'French', region: 'Europe' },
+      'ES': { population: '47.5 million', capital: 'Madrid', languages: 'Spanish', region: 'Europe' },
+      'IT': { population: '59.0 million', capital: 'Rome', languages: 'Italian', region: 'Europe' },
+      'JP': { population: '125.4 million', capital: 'Tokyo', languages: 'Japanese', region: 'Asia' },
+      'IN': { population: '1.42 billion', capital: 'New Delhi', languages: 'Hindi, English, 22 official languages', region: 'Asia' },
+      'BR': { population: '216.4 million', capital: 'Brasília', languages: 'Portuguese', region: 'South America' },
+      'MX': { population: '128.5 million', capital: 'Mexico City', languages: 'Spanish', region: 'North America' },
+      'KR': { population: '51.8 million', capital: 'Seoul', languages: 'Korean', region: 'Asia' },
+      'CN': { population: '1.41 billion', capital: 'Beijing', languages: 'Mandarin', region: 'Asia' }
+    };
+    
+    const metadata = metadataMap[code] || { population: 'Unknown', capital: 'Unknown', languages: 'Unknown', region: 'Unknown' };
+    
+    return {
+      ...metadata,
+      wikipedia: `https://en.wikipedia.org/wiki/${name.replace(' ', '_')}`,
+      wikidata: `https://www.wikidata.org/wiki/Q${Math.floor(Math.random() * 1000000)}`
+    };
   };
+
+  const countryMetadata = getCountryMetadata(countryCode!, countryName);
 
   if (loading) {
     return (
