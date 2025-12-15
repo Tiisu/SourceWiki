@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { useAuth } from '../lib/auth-context';
 import { submissionApi, userApi } from '../lib/api';
+import React from 'react';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();

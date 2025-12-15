@@ -45,6 +45,7 @@ interface Submission {
   updatedAt: string;
 }
 import { Search, Filter, ExternalLink, Calendar, Globe, BookOpen } from 'lucide-react';
+import React from 'react';
 
 export const PublicDirectory: React.FC = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);

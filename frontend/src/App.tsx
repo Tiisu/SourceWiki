@@ -1,16 +1,13 @@
-import { useEffect } from 'react';
+
+
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
 import { Navigation } from './components/Navigation';
 import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
 import { Toaster } from './components/ui/sonner';
-import { initializeData } from './lib/mock-data';
 
 function AppContent() {
-  useEffect(() => {
-    // Initialize mock data in localStorage
-    initializeData();
-  }, []);
 
   return (
     <Router>
