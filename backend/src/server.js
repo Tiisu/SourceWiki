@@ -18,10 +18,19 @@ import reportsRoutes from './routes/reportsRoutes.js';
 import config from './config/config.js';
 
 
+
+import crypto from 'crypto';
+
 // Connect to database
 connectDB();
 
 const app = express();
+
+// Request ID middleware
+app.use((req, res, next) => {
+  req.requestId = crypto.randomUUID();
+  next();
+});
 
 // Security middleware
 app.use(helmet());

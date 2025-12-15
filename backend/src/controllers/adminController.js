@@ -2,14 +2,19 @@
 import User from '../models/User.js';
 import Submission from '../models/Submission.js';
 import CountryStats from '../models/CountryStats.js';
+
 import ExportUtils from '../utils/exportUtils.js';
+
+import AppError from '../utils/AppError.js';
+import { ErrorCodes } from '../utils/errorCodes.j
 
 class AdminController {
   // ============================================================================
   // DASHBOARD & ANALYTICS
   // ============================================================================
 
-  static async getDashboard(req, res) {
+
+  static async getDashboard(req, res, next) {
     try {
       // Global statistics
       const [
@@ -61,15 +66,11 @@ class AdminController {
 
       res.json(dashboard);
     } catch (error) {
-      console.error('Dashboard fetch error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to fetch dashboard data' 
-      });
+      next(error);
     }
   }
 
-  static async getAnalytics(req, res) {
+  static async getAnalytics(req, res, next) {
     try {
       const period = req.query.period || '30d';
       const country = req.query.country;
@@ -140,11 +141,7 @@ class AdminController {
         generated: new Date()
       });
     } catch (error) {
-      console.error('Analytics fetch error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to fetch analytics' 
-      });
+      next(error);
     }
   }
 
@@ -152,7 +149,7 @@ class AdminController {
   // USER MANAGEMENT
   // ============================================================================
 
-  static async getUsers(req, res) {
+  static async getUsers(req, res, next) {
     try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
@@ -213,24 +210,17 @@ class AdminController {
         }
       });
     } catch (error) {
-      console.error('Users fetch error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to fetch users' 
-      });
+      next(error);
     }
   }
 
-  static async updateUser(req, res) {
+  static async updateUser(req, res, next) {
     try {
       const userId = req.params.id;
       
       // Prevent self-modification
       if (userId === req.user._id.toString()) {
-        return res.status(400).json({ 
-          error: 'Bad Request',
-          message: 'Cannot modify your own account' 
-        });
+        return next(new AppError('Cannot modify your own account', 400, ErrorCodes.INVALID_INPUT));
       }
       
       // Build updates object
@@ -248,10 +238,7 @@ class AdminController {
       ).select('-password');
       
       if (!user) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'User not found' 
-        });
+        return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       // If role changed to verifier, update CountryStats
@@ -268,31 +255,21 @@ class AdminController {
         user 
       });
     } catch (error) {
-      console.error('User update error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to update user' 
-      });
+      next(error);
     }
   }
 
-  static async deleteUser(req, res) {
+  static async deleteUser(req, res, next) {
     try {
       const userId = req.params.id;
       
       if (userId === req.user._id.toString()) {
-        return res.status(400).json({ 
-          error: 'Bad Request',
-          message: 'Cannot delete your own account' 
-        });
+        return next(new AppError('Cannot delete your own account', 400, ErrorCodes.INVALID_INPUT));
       }
       
       const user = await User.findById(userId);
       if (!user) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'User not found' 
-        });
+        return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
 
       // Soft delete
@@ -310,11 +287,7 @@ class AdminController {
         user: deletedUser 
       });
     } catch (error) {
-      console.error('User deletion error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to delete user' 
-      });
+      next(error);
     }
   }
 
@@ -322,7 +295,7 @@ class AdminController {
   // SUBMISSION MANAGEMENT
   // ============================================================================
 
-  static async getSubmissions(req, res) {
+  static async getSubmissions(req, res, next) {
     try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
@@ -361,25 +334,18 @@ class AdminController {
         }
       });
     } catch (error) {
-      console.error('Admin submissions fetch error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to fetch submissions' 
-      });
+      next(error);
     }
   }
 
-  static async overrideSubmission(req, res) {
+  static async overrideSubmission(req, res, next) {
     try {
       const submissionId = req.params.id;
       const { status, adminNotes, reason } = req.body;
       
       const submission = await Submission.findById(submissionId);
       if (!submission) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'Submission not found' 
-        });
+        return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       // Store original values for audit
@@ -399,25 +365,18 @@ class AdminController {
         submission 
       });
     } catch (error) {
-      console.error('Submission override error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to override submission' 
-      });
+      next(error);
     }
   }
 
-  static async deleteSubmission(req, res) {
+  static async deleteSubmission(req, res, next) {
     try {
       const submissionId = req.params.id;
       const { reason } = req.body;
       
       const submission = await Submission.findById(submissionId);
       if (!submission) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'Submission not found' 
-        });
+        return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       await Submission.findByIdAndDelete(submissionId);
@@ -425,11 +384,7 @@ class AdminController {
       res.json({ message: 'Submission deleted successfully' });
 
     } catch (error) {
-      console.error('Submission deletion error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to delete submission' 
-      });
+      next(error);
     }
   }
 
