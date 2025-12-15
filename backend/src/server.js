@@ -13,20 +13,12 @@ import adminRoutes from './routes/adminRoutes.js';
 import countryRoutes from './routes/countryRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
 import reportsRoutes from './routes/reportsRoutes.js';
-import mongoSanitize from 'express-mongo-sanitize';
-
 //importing the config file where all the environment variables are stored and loaded
 import config from './config/config.js';
 
-app.use(mongoSanitize());
 
 // Connect to database
-if (!config.mongodbUri) {
-  console.error('MONGODB_URI is not set. Please set MONGODB_URI in your environment or .env file.');
-  process.exit(1);
-}
-// Attempt connection with a few retries
-connectDB({ maxRetries: 4, baseDelay: 1000 });
+connectDB();
 
 const app = express();
 
