@@ -80,6 +80,11 @@ import {
   Globe,
   BookOpen,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../components/ui/tooltip";
 
 export const PublicDirectory: React.FC = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -107,6 +112,7 @@ export const PublicDirectory: React.FC = () => {
     filterReliability,
     filterMediaType,
     searchQuery,
+    sortBy,
   ]);
 
   const loadSubmissions = async () => {
@@ -446,12 +452,23 @@ export const PublicDirectory: React.FC = () => {
                   <span className="text-3xl">
                     {getCategoryIcon(submission.category)}
                   </span>
-                  <Badge
-                    variant="outline"
-                    className={getReliabilityColor(submission.reliability)}
-                  >
-                    {submission.reliability === "credible" ? "✅" : "❌"}
-                  </Badge>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        className={getReliabilityColor(submission.reliability)}
+                      >
+                        {submission.reliability === "credible" ? "✅" : "❌"}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs text-sm">
+                        {submission.reliability === "credible"
+                          ? "Verified as a reliable source according to Wikipedia guidelines."
+                          : "Reviewed and marked as unreliable by verifiers."}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 <CardTitle className="text-lg line-clamp-2">
                   {submission.title}
@@ -460,29 +477,61 @@ export const PublicDirectory: React.FC = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  <Badge
-                    variant="outline"
-                    className={getCategoryColor(submission.category)}
-                  >
-                    {submission.category}
-                  </Badge>
-                  <Badge variant="outline">
-                    {getCountryFlag(submission.country)} {submission.country}
-                  </Badge>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        className={getCategoryColor(submission.category)}
+                      >
+                        {submission.category}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs text-sm">
+                        {submission.category === "primary" &&
+                          "Primary sources are original materials such as official documents."}
+                        {submission.category === "secondary" &&
+                          "Secondary sources analyze or interpret primary sources."}
+                        {submission.category === "unreliable" &&
+                          "Does not meet Wikipedia reliability standards."}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline">
+                        {getCountryFlag(submission.country)}{" "}
+                        {submission.country}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-sm">
+                        Source published in {getCountryName(submission.country)}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+
                   <Badge variant="outline">
                     {submission.mediaType === "pdf" ? "📄" : "🔗"}
                   </Badge>
                 </div>
 
-                <a
-                  href={submission.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-2 text-sm text-blue-600 hover:underline"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  <span className="truncate">View Source</span>
-                </a>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(submission.url, "_blank")}
+                      aria-label="Open source"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm">Open original source</p>
+                  </TooltipContent>
+                </Tooltip>
 
                 {submission.wikipediaArticle && (
                   <a
@@ -584,7 +633,7 @@ export const PublicDirectory: React.FC = () => {
           </CardContent>
         </Card>
       )}
-            {/* Pagination */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-12 flex flex-col items-center gap-4">
           <p className="text-sm text-gray-500">
@@ -597,9 +646,7 @@ export const PublicDirectory: React.FC = () => {
               <PaginationItem>
                 <PaginationPrevious
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className={
-                    page === 1 ? "pointer-events-none opacity-50" : ""
-                  }
+                  className={page === 1 ? "pointer-events-none opacity-50" : ""}
                 />
               </PaginationItem>
 
@@ -630,13 +677,9 @@ export const PublicDirectory: React.FC = () => {
               {/* Next */}
               <PaginationItem>
                 <PaginationNext
-                  onClick={() =>
-                    setPage((p) => Math.min(totalPages, p + 1))
-                  }
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   className={
-                    page === totalPages
-                      ? "pointer-events-none opacity-50"
-                      : ""
+                    page === totalPages ? "pointer-events-none opacity-50" : ""
                   }
                 />
               </PaginationItem>
