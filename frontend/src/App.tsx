@@ -1,18 +1,13 @@
-import { useEffect } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Link, Navigate, BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
 import { Navigation } from './components/Navigation';
-import {
-  LandingPage,
-  AuthPage,
-  SubmissionForm,
-  AdminDashboard,
-  PublicDirectory,
-  UserProfile
-} from './pages';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
 import { initializeData } from './lib/mock-data';
+import { TooltipProvider } from './components/ui/tooltip'; // only if TooltipProvider is needed
 
 function NotFound() {
   return (
@@ -40,10 +35,37 @@ function AppContent() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/auth" element={<AuthPage />} />
-              <Route path="/submit" element={<SubmissionForm />} />
-              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/directory" element={<PublicDirectory />} />
-              <Route path="/profile" element={<UserProfile />} />
+
+              {/* Protected Routes */}
+              <Route
+                path="/submit"
+                element={
+                  <ProtectedRoute>
+                    <SubmissionForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <UserProfile />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Admin Route */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
@@ -57,39 +79,19 @@ function AppContent() {
                 <div>
                   <h3 className="mb-3">About WikiSourceVerifier</h3>
                   <p className="text-sm text-gray-600">
-                    A community-driven platform for verifying Wikipedia
-                    references and maintaining source quality standards.
+                    A community-driven platform for verifying Wikipedia references and maintaining source quality standards.
                   </p>
                 </div>
+
                 <div>
                   <h3 className="mb-3">Quick Links</h3>
                   <ul className="space-y-2 text-sm">
-                    <li>
-                      <Link
-                        to="/directory"
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        Browse Directory
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="/submit"
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        Submit Reference
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        to="/auth"
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        Login / Register
-                      </Link>
-                    </li>
+                    <li><Link to="/directory">Browse Directory</Link></li>
+                    <li><Link to="/submit">Submit Reference</Link></li>
+                    <li><Link to="/auth">Login / Register</Link></li>
                   </ul>
                 </div>
+
                 <div>
                   <h3 className="mb-3">Resources</h3>
                   <ul className="space-y-2 text-sm text-gray-600">
@@ -100,14 +102,10 @@ function AppContent() {
                   </ul>
                 </div>
               </div>
+
               <div className="mt-8 pt-8 border-t text-center text-sm text-gray-600">
-                <p>
-                  © 2025 WikiSourceVerifier. Built for the Wikipedia community.
-                </p>
-                <p className="mt-2">
-                  This is a demonstration platform. For production use, connect
-                  to a real backend service.
-                </p>
+                <p>© 2025 WikiSourceVerifier. Built for the Wikipedia community.</p>
+                <p className="mt-2">This is a demonstration platform. For production use, connect to a real backend service.</p>
               </div>
             </div>
           </footer>

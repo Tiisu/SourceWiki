@@ -1,3 +1,4 @@
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface ApiResponse<T = any> {
@@ -9,35 +10,36 @@ interface ApiResponse<T = any> {
 
 class ApiClient {
   private baseURL: string;
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
+  private isRefreshing = false;
+  private failedQueue: Array<{
+    resolve: (value: string) => void;
+    reject: (reason: any) => void;
+  }> = [];
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
-    this.loadTokens();
   }
 
-  private loadTokens() {
-    this.accessToken = localStorage.getItem('accessToken');
-    this.refreshToken = localStorage.getItem('refreshToken');
+  private processQueue(error: any, token: string | null = null) {
+    this.failedQueue.forEach(({ resolve, reject }) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(token!);
+      }
+    });
+    
+    this.failedQueue = [];
   }
 
-  private saveTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-  }
+  private async refreshAccessToken(): Promise<string> {
+    if (this.isRefreshing) {
+      return new Promise((resolve, reject) => {
+        this.failedQueue.push({ resolve, reject });
+      });
+    }
 
-  private clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-  }
-
-  private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
+    this.isRefreshing = true;
 
     try {
       const response = await fetch(`${this.baseURL}/auth/refresh`, {
@@ -45,20 +47,22 @@ class ApiClient {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
+        credentials: 'include',
       });
 
       if (response.ok) {
         const data = await response.json();
-        this.saveTokens(data.accessToken, this.refreshToken!);
-        return true;
+        this.processQueue(null, data.accessToken);
+        return data.accessToken;
+      } else {
+        this.processQueue(new Error('Token refresh failed'), null);
+        throw new Error('Token refresh failed');
       }
-      
-      this.clearTokens();
-      return false;
     } catch (error) {
-      this.clearTokens();
-      return false;
+      this.processQueue(error, null);
+      throw error;
+    } finally {
+      this.isRefreshing = false;
     }
   }
 
@@ -72,10 +76,6 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
     try {
       let response = await fetch(url, {
         ...options,
@@ -83,17 +83,20 @@ class ApiClient {
         credentials: 'include',
       });
 
-      // If unauthorized and we have a refresh token, try to refresh
-      if (response.status === 401 && this.refreshToken) {
-        const refreshed = await this.refreshAccessToken();
-        if (refreshed) {
-          // Retry the request with new token
-          headers['Authorization'] = `Bearer ${this.accessToken}`;
+      // If unauthorized, try to refresh token
+      if (response.status === 401) {
+        try {
+          const newToken = await this.refreshAccessToken();
+          headers['Authorization'] = `Bearer ${newToken}`;
+          
           response = await fetch(url, {
             ...options,
             headers,
             credentials: 'include',
           });
+        } catch (refreshError) {
+          // Refresh failed, redirect to login or throw error
+          throw new Error('Authentication required');
         }
       }
 
@@ -156,16 +159,16 @@ class ApiClient {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
-  setTokens(accessToken: string, refreshToken: string) {
-    this.saveTokens(accessToken, refreshToken);
-  }
-
   clearAuth() {
-    this.clearTokens();
+    // Clear any pending refresh requests
+    this.failedQueue = [];
   }
 
   isAuthenticated(): boolean {
-    return !!this.accessToken;
+    // For cookie-based auth, we need to check with the server
+    // This is a simplified check - in a real app you might want
+    // to ping the auth/me endpoint
+    return true; // Will be validated server-side
   }
 }
 

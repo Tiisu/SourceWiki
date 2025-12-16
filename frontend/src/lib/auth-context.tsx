@@ -14,6 +14,7 @@ export interface User {
   isActive: boolean;
 }
 
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -47,12 +48,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
+
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const response = await authApi.login(username, password);
       
       if (response.success) {
-        api.setTokens(response.accessToken, response.refreshToken);
         setUser(response.user);
         toast.success('Login successful!');
         return true;
@@ -78,12 +79,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+
   const register = async (username: string, email: string, password: string, country: string): Promise<boolean> => {
     try {
       const response = await authApi.register(username, email, password, country);
       
       if (response.success) {
-        api.setTokens(response.accessToken, response.refreshToken);
         setUser(response.user);
         toast.success('Registration successful!');
         return true;
@@ -120,6 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   };
+
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, register, updateUser }}>

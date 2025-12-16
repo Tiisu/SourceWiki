@@ -79,6 +79,7 @@ export const mockUsers: User[] = [
     id: '2',
     username: 'SourceVerifier',
     email: 'verifier@example.com',
+    
     country: 'GB',
     role: 'verifier',
     points: 450,

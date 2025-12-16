@@ -36,24 +36,11 @@ app.use((req, res, next) => {
 // Security middleware
 app.use(helmet());
 
-app.use(
-  helmet.contentSecurityPolicy({
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      frameAncestors: ["'none'"]
-    }
-  })
-);
-
 
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3001',
   'http://localhost:5173',
   process.env.FRONTEND_URL
 ].filter(Boolean);
