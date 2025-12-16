@@ -100,7 +100,6 @@ function AppContent() {
             </div>
           </footer>
         </div>
-      </Router>
     </TooltipProvider>
   );
 }
