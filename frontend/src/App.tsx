@@ -5,6 +5,7 @@ import { Navigation } from './components/Navigation';
 import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
 import { Toaster } from './components/ui/sonner';
 import { initializeData } from './lib/mock-data';
+import CountryPage from './pages/country/CountryPage';
 
 function AppContent() {
   useEffect(() => {
@@ -25,6 +26,7 @@ function AppContent() {
             <Route path="/directory" element={<PublicDirectory />} />
             <Route path="/profile" element={<UserProfile />} />
             <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/country/:slug" element={<CountryPage />} />
           </Routes>
         </main>
         <Toaster position="top-right" />
