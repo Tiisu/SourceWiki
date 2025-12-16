@@ -1,9 +1,21 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Input } from '../components/ui/input';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { useState, useEffect, useMemo } from "react";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import {
   Table,
   TableBody,
@@ -11,7 +23,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui/table';
+} from "../components/ui/table";
 import {
   COUNTRIES,
   getCategoryIcon,
@@ -19,9 +31,25 @@ import {
   getCountryFlag,
   getCountryName,
   getReliabilityColor,
-} from '../lib/mock-data';
-import { submissionApi } from '../lib/api';
-import { toast } from 'sonner';
+} from "../lib/mock-data";
+import { submissionApi } from "../lib/api";
+import { toast } from "sonner";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "../components/ui/breadcrumb";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "../components/ui/pagination";
 
 interface Submission {
   id: string;
@@ -44,18 +72,25 @@ interface Submission {
   createdAt: string;
   updatedAt: string;
 }
-import { Search, Filter, ExternalLink, Calendar, Globe, BookOpen } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  ExternalLink,
+  Calendar,
+  Globe,
+  BookOpen,
+} from "lucide-react";
 
 export const PublicDirectory: React.FC = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterCountry, setFilterCountry] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('approved');
-  const [filterReliability, setFilterReliability] = useState<string>('all');
-  const [filterMediaType, setFilterMediaType] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('date-desc');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCountry, setFilterCountry] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("approved");
+  const [filterReliability, setFilterReliability] = useState<string>("all");
+  const [filterMediaType, setFilterMediaType] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("date-desc");
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -64,13 +99,23 @@ export const PublicDirectory: React.FC = () => {
     loadSubmissions();
   }, [filterCountry, filterCategory, filterStatus, searchQuery, page]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [
+    filterCountry,
+    filterCategory,
+    filterReliability,
+    filterMediaType,
+    searchQuery,
+  ]);
+
   const loadSubmissions = async () => {
     setLoading(true);
     try {
       const response = await submissionApi.getAll({
-        country: filterCountry !== 'all' ? filterCountry : undefined,
-        category: filterCategory !== 'all' ? filterCategory : undefined,
-        status: filterStatus !== 'all' ? filterStatus : undefined,
+        country: filterCountry !== "all" ? filterCountry : undefined,
+        category: filterCategory !== "all" ? filterCategory : undefined,
+        status: filterStatus !== "all" ? filterStatus : undefined,
         search: searchQuery || undefined,
         page,
         limit: 20,
@@ -81,7 +126,7 @@ export const PublicDirectory: React.FC = () => {
         setTotalPages(response.pages);
       }
     } catch (error) {
-      toast.error('Failed to load submissions');
+      toast.error("Failed to load submissions");
     } finally {
       setLoading(false);
     }
@@ -102,35 +147,35 @@ export const PublicDirectory: React.FC = () => {
     }
 
     // Country filter
-    if (filterCountry !== 'all') {
+    if (filterCountry !== "all") {
       filtered = filtered.filter((s) => s.country === filterCountry);
     }
 
     // Category filter
-    if (filterCategory !== 'all') {
+    if (filterCategory !== "all") {
       filtered = filtered.filter((s) => s.category === filterCategory);
     }
 
     // Status filter (already applied in API call, but keep for client-side filtering)
-    if (filterStatus !== 'all') {
+    if (filterStatus !== "all") {
       filtered = filtered.filter((s) => s.status === filterStatus);
     }
 
     // Media type filter
-    if (filterMediaType !== 'all') {
+    if (filterMediaType !== "all") {
       filtered = filtered.filter((s) => s.mediaType === filterMediaType);
     }
 
     // Sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'date-desc':
-          return (b.verifiedDate || '').localeCompare(a.verifiedDate || '');
-        case 'date-asc':
-          return (a.verifiedDate || '').localeCompare(b.verifiedDate || '');
-        case 'title-asc':
+        case "date-desc":
+          return (b.verifiedDate || "").localeCompare(a.verifiedDate || "");
+        case "date-asc":
+          return (a.verifiedDate || "").localeCompare(b.verifiedDate || "");
+        case "title-asc":
           return a.title.localeCompare(b.title);
-        case 'title-desc':
+        case "title-desc":
           return b.title.localeCompare(a.title);
         default:
           return 0;
@@ -150,15 +195,71 @@ export const PublicDirectory: React.FC = () => {
 
   const stats = useMemo(() => {
     const total = filteredAndSortedSubmissions.length;
-    const credible = filteredAndSortedSubmissions.filter((s) => s.reliability === 'credible').length;
-    const countries = new Set(filteredAndSortedSubmissions.map((s) => s.country)).size;
-    const primary = filteredAndSortedSubmissions.filter((s) => s.category === 'primary').length;
+    const credible = filteredAndSortedSubmissions.filter(
+      (s) => s.reliability === "credible"
+    ).length;
+    const countries = new Set(
+      filteredAndSortedSubmissions.map((s) => s.country)
+    ).size;
+    const primary = filteredAndSortedSubmissions.filter(
+      (s) => s.category === "primary"
+    ).length;
 
     return { total, credible, countries, primary };
   }, [filteredAndSortedSubmissions]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="mb-6 overflow-x-auto whitespace-nowrap">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                onClick={() => {
+                  setFilterCountry("all");
+                  setFilterCategory("all");
+                  setFilterReliability("all");
+                  setFilterMediaType("all");
+                  setSearchQuery("");
+                  setPage(1);
+                }}
+                className="cursor-pointer"
+              >
+                Home
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+
+            <BreadcrumbSeparator />
+
+            <BreadcrumbItem>
+              <BreadcrumbPage>Directory</BreadcrumbPage>
+            </BreadcrumbItem>
+
+            {filterCountry !== "all" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>
+                    {getCountryName(filterCountry)}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
+
+            {filterCategory !== "all" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="capitalize">
+                    {filterCategory}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+
       <div className="mb-8">
         <h1 className="mb-2">Verified Reference Directory</h1>
         <p className="text-gray-600">
@@ -170,7 +271,9 @@ export const PublicDirectory: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-gray-600">Total Sources</CardTitle>
+            <CardTitle className="text-sm text-gray-600">
+              Total Sources
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl">{stats.total}</div>
@@ -197,7 +300,9 @@ export const PublicDirectory: React.FC = () => {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-gray-600">Primary Sources</CardTitle>
+            <CardTitle className="text-sm text-gray-600">
+              Primary Sources
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl text-purple-600">{stats.primary}</div>
@@ -254,7 +359,10 @@ export const PublicDirectory: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select value={filterReliability} onValueChange={setFilterReliability}>
+            <Select
+              value={filterReliability}
+              onValueChange={setFilterReliability}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="All Reliability" />
               </SelectTrigger>
@@ -292,20 +400,21 @@ export const PublicDirectory: React.FC = () => {
           {/* View Toggle */}
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              Showing {filteredAndSortedSubmissions.length} of {submissions.length} sources
+              Showing {filteredAndSortedSubmissions.length} of{" "}
+              {submissions.length} sources
             </div>
             <div className="flex space-x-2">
               <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
+                variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setViewMode('grid')}
+                onClick={() => setViewMode("grid")}
               >
                 Grid
               </Button>
               <Button
-                variant={viewMode === 'table' ? 'default' : 'outline'}
+                variant={viewMode === "table" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setViewMode('table')}
+                onClick={() => setViewMode("table")}
               >
                 Table
               </Button>
@@ -320,36 +429,48 @@ export const PublicDirectory: React.FC = () => {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Search className="h-12 w-12 text-gray-400 mb-4" />
             <p className="text-lg mb-2">No sources found</p>
-            <p className="text-gray-500">Try adjusting your search or filters</p>
+            <p className="text-gray-500">
+              Try adjusting your search or filters
+            </p>
           </CardContent>
         </Card>
-      ) : viewMode === 'grid' ? (
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAndSortedSubmissions.map((submission) => (
-            <Card key={submission.id} className="hover:shadow-lg transition-shadow">
+            <Card
+              key={submission.id}
+              className="hover:shadow-lg transition-shadow"
+            >
               <CardHeader>
                 <div className="flex items-start justify-between mb-2">
-                  <span className="text-3xl">{getCategoryIcon(submission.category)}</span>
+                  <span className="text-3xl">
+                    {getCategoryIcon(submission.category)}
+                  </span>
                   <Badge
                     variant="outline"
                     className={getReliabilityColor(submission.reliability)}
                   >
-                    {submission.reliability === 'credible' ? '✅' : '❌'}
+                    {submission.reliability === "credible" ? "✅" : "❌"}
                   </Badge>
                 </div>
-                <CardTitle className="text-lg line-clamp-2">{submission.title}</CardTitle>
+                <CardTitle className="text-lg line-clamp-2">
+                  {submission.title}
+                </CardTitle>
                 <CardDescription>{submission.publisher}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className={getCategoryColor(submission.category)}>
+                  <Badge
+                    variant="outline"
+                    className={getCategoryColor(submission.category)}
+                  >
                     {submission.category}
                   </Badge>
                   <Badge variant="outline">
                     {getCountryFlag(submission.country)} {submission.country}
                   </Badge>
                   <Badge variant="outline">
-                    {submission.mediaType === 'pdf' ? '📄' : '🔗'}
+                    {submission.mediaType === "pdf" ? "📄" : "🔗"}
                   </Badge>
                 </div>
 
@@ -419,20 +540,28 @@ export const PublicDirectory: React.FC = () => {
                       <TableCell>{submission.publisher}</TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {getCountryFlag(submission.country)} {submission.country}
+                          {getCountryFlag(submission.country)}{" "}
+                          {submission.country}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={getCategoryColor(submission.category)}>
+                        <Badge
+                          variant="outline"
+                          className={getCategoryColor(submission.category)}
+                        >
                           {submission.category}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={getReliabilityColor(submission.reliability)}
+                          className={getReliabilityColor(
+                            submission.reliability
+                          )}
                         >
-                          {submission.reliability === 'credible' ? '✅ Credible' : '❌ Unreliable'}
+                          {submission.reliability === "credible"
+                            ? "✅ Credible"
+                            : "❌ Unreliable"}
                         </Badge>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
@@ -442,7 +571,7 @@ export const PublicDirectory: React.FC = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(submission.url, '_blank')}
+                          onClick={() => window.open(submission.url, "_blank")}
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>
@@ -454,6 +583,66 @@ export const PublicDirectory: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+            {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-12 flex flex-col items-center gap-4">
+          <p className="text-sm text-gray-500">
+            Page {page} of {totalPages}
+          </p>
+
+          <Pagination>
+            <PaginationContent>
+              {/* Previous */}
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className={
+                    page === 1 ? "pointer-events-none opacity-50" : ""
+                  }
+                />
+              </PaginationItem>
+
+              {/* Page Numbers */}
+              {Array.from({ length: totalPages }).map((_, index) => {
+                const pageNumber = index + 1;
+
+                if (
+                  pageNumber === 1 ||
+                  pageNumber === totalPages ||
+                  Math.abs(pageNumber - page) <= 1
+                ) {
+                  return (
+                    <PaginationItem key={pageNumber}>
+                      <PaginationLink
+                        isActive={page === pageNumber}
+                        onClick={() => setPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                }
+
+                return null;
+              })}
+
+              {/* Next */}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  className={
+                    page === totalPages
+                      ? "pointer-events-none opacity-50"
+                      : ""
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
     </div>
   );
