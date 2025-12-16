@@ -34,7 +34,6 @@ function AppContent() {
 
   return (
     <TooltipProvider>
-      <Router>
         <div className="min-h-screen bg-white">
           <Navigation />
 
@@ -95,7 +94,6 @@ function AppContent() {
             </div>
           </footer>
         </div>
-      </Router>
     </TooltipProvider>
   );
 }

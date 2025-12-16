@@ -101,25 +101,36 @@ export const createRateLimiter = (options = {}) => {
   });
 };
 
-// Cache rate limiters by role to avoid recreating them on each request
-const limiterCache = new Map();
+// Pre-create all rate limiters at initialization time
+// This is required by express-rate-limit - limiters must be created before handling requests
+const rateLimiters = {
+  default: createRateLimiter({
+    windowMs: RATE_LIMITS.default.windowMs,
+    max: RATE_LIMITS.default.max,
+    message: 'Too many requests, please try again later.',
+  }),
+  contributor: createRateLimiter({
+    windowMs: RATE_LIMITS.contributor.windowMs,
+    max: RATE_LIMITS.contributor.max,
+    message: 'Too many requests for contributor role, please try again later.',
+  }),
+  verifier: createRateLimiter({
+    windowMs: RATE_LIMITS.verifier.windowMs,
+    max: RATE_LIMITS.verifier.max,
+    message: 'Too many requests for verifier role, please try again later.',
+  }),
+  admin: createRateLimiter({
+    windowMs: RATE_LIMITS.admin.windowMs,
+    max: RATE_LIMITS.admin.max,
+    message: 'Too many requests for admin role, please try again later.',
+  }),
+};
 
 /**
- * Get or create a rate limiter for a specific role
+ * Get the appropriate rate limiter for a role
  */
-function getRateLimiterForRole(role, limitConfig) {
-  const cacheKey = role || 'default';
-  
-  if (!limiterCache.has(cacheKey)) {
-    const limiter = createRateLimiter({
-      windowMs: limitConfig.windowMs,
-      max: limitConfig.max,
-      message: `Too many requests${role ? ` for ${role} role` : ''}, please try again later.`,
-    });
-    limiterCache.set(cacheKey, limiter);
-  }
-  
-  return limiterCache.get(cacheKey);
+function getRateLimiterForRole(role) {
+  return rateLimiters[role] || rateLimiters.default;
 }
 
 /**
@@ -128,21 +139,18 @@ function getRateLimiterForRole(role, limitConfig) {
  */
 export const roleBasedRateLimiter = (req, res, next) => {
   // Determine the rate limit based on user role
-  let limitConfig;
   let role;
   
   if (req.user && req.user.role) {
     // User is authenticated, use role-based limits
     role = req.user.role;
-    limitConfig = RATE_LIMITS[role] || RATE_LIMITS.contributor;
   } else {
     // User is not authenticated, use default IP-based limits
-    role = null;
-    limitConfig = RATE_LIMITS.default;
+    role = 'default';
   }
 
-  // Get or create rate limiter for this role
-  const limiter = getRateLimiterForRole(role, limitConfig);
+  // Get pre-created rate limiter for this role
+  const limiter = getRateLimiterForRole(role);
 
   // Apply rate limiter
   limiter(req, res, next);
@@ -158,7 +166,7 @@ export const userRateLimiter = roleBasedRateLimiter;
 /**
  * Rate limiter for specific roles
  * @param {string|string[]} roles - Role(s) to apply this limiter to
- * @param {Object} customLimits - Custom rate limit configuration
+ * @param {Object} customLimits - Custom rate limit configuration (not currently used, kept for API compatibility)
  */
 export const roleSpecificRateLimiter = (roles, customLimits = {}) => {
   const roleArray = Array.isArray(roles) ? roles : [roles];
@@ -166,23 +174,13 @@ export const roleSpecificRateLimiter = (roles, customLimits = {}) => {
   return (req, res, next) => {
     // Check if user has one of the specified roles
     if (req.user && roleArray.includes(req.user.role)) {
-      const limitConfig = customLimits[req.user.role] || RATE_LIMITS[req.user.role] || RATE_LIMITS.contributor;
-      
-      const limiter = createRateLimiter({
-        windowMs: limitConfig.windowMs,
-        max: limitConfig.max,
-        message: `Rate limit exceeded for ${req.user.role} role. Please try again later.`,
-      });
-
+      // Use pre-created limiter for the user's role
+      const limiter = getRateLimiterForRole(req.user.role);
       return limiter(req, res, next);
     }
     
     // If user doesn't have the role, use default limiter
-    const limiter = createRateLimiter({
-      windowMs: RATE_LIMITS.default.windowMs,
-      max: RATE_LIMITS.default.max,
-    });
-
+    const limiter = getRateLimiterForRole('default');
     return limiter(req, res, next);
   };
 };
