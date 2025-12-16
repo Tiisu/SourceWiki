@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
 import { Navigation } from './components/Navigation';
 import {
@@ -11,8 +11,8 @@ import {
   UserProfile
 } from './pages';
 import { Toaster } from './components/ui/sonner';
+import { TooltipProvider } from './components/ui/tooltip';
 import { initializeData } from './lib/mock-data';
-import { Link } from 'react-router-dom';
 
 function NotFound() {
   return (
@@ -33,9 +33,9 @@ function AppContent() {
 
   return (
     <TooltipProvider>
-      <Router>
         <div className="min-h-screen bg-white">
           <Navigation />
+
           <main>
             <Routes>
               <Route path="/" element={<LandingPage />} />
@@ -44,9 +44,10 @@ function AppContent() {
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/directory" element={<PublicDirectory />} />
               <Route path="/profile" element={<UserProfile />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
+
           <Toaster position="top-right" />
 
           {/* Footer */}
@@ -64,28 +65,28 @@ function AppContent() {
                   <h3 className="mb-3">Quick Links</h3>
                   <ul className="space-y-2 text-sm">
                     <li>
-                      <a
-                        href="/directory"
+                      <Link
+                        to="/directory"
                         className="text-gray-600 hover:text-gray-900"
                       >
                         Browse Directory
-                      </a>
+                      </Link>
                     </li>
                     <li>
-                      <a
-                        href="/submit"
+                      <Link
+                        to="/submit"
                         className="text-gray-600 hover:text-gray-900"
                       >
                         Submit Reference
-                      </a>
+                      </Link>
                     </li>
                     <li>
-                      <a
-                        href="/auth"
+                      <Link
+                        to="/auth"
                         className="text-gray-600 hover:text-gray-900"
                       >
                         Login / Register
-                      </a>
+                      </Link>
                     </li>
                   </ul>
                 </div>
@@ -111,58 +112,7 @@ function AppContent() {
             </div>
           </footer>
         </div>
-      </Router>
     </TooltipProvider>
-    <div className="min-h-screen bg-white">
-      <Navigation />
-
-      <main>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/submit" element={<SubmissionForm />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/directory" element={<PublicDirectory />} />
-          <Route path="/profile" element={<UserProfile />} />
-
-          {/* Proper 404 handling */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-
-      <Toaster position="top-right" />
-
-      {/* Footer */}
-      <footer className="border-t mt-16">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="mb-3">About WikiSourceVerifier</h3>
-              <p className="text-sm text-gray-600">
-                A community-driven platform for verifying Wikipedia references.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="mb-3">Quick Links</h3>
-              <ul className="space-y-2 text-sm">
-                <li><Link to="/directory">Browse Directory</Link></li>
-                <li><Link to="/submit">Submit Reference</Link></li>
-                <li><Link to="/auth">Login / Register</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="mb-3">Resources</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>Wikipedia Verifiability Guidelines</li>
-                <li>Reliable Sources Policy</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
   );
 }
 
