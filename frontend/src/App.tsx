@@ -5,6 +5,7 @@ import { Navigation } from './components/Navigation';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
 import { Toaster } from './components/ui/sonner';
+import { TooltipProvider } from './components/ui/tooltip';
 import { initializeData } from './lib/mock-data';
 import { TooltipProvider } from './components/ui/tooltip'; // only if TooltipProvider is needed
 
@@ -27,9 +28,9 @@ function AppContent() {
 
   return (
     <TooltipProvider>
-      <Router>
         <div className="min-h-screen bg-white">
           <Navigation />
+
           <main>
             <Routes>
               <Route path="/" element={<LandingPage />} />
@@ -109,7 +110,6 @@ function AppContent() {
             </div>
           </footer>
         </div>
-      </Router>
     </TooltipProvider>
   );
 }
