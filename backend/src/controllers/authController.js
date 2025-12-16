@@ -1,5 +1,7 @@
 import User from '../models/User.js';
 import { sendTokenResponse, verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
+import AppError from '../utils/AppError.js';
+import { ErrorCodes } from '../utils/errorCodes.js';
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -33,28 +35,19 @@ export const login = async (req, res, next) => {
     const user = await User.findOne({ username }).select('+password');
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
+      return next(new AppError('Invalid credentials', 401, ErrorCodes.INVALID_CREDENTIALS));
     }
 
     // Check if password matches
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
+      return next(new AppError('Invalid credentials', 401, ErrorCodes.INVALID_CREDENTIALS));
     }
 
     // Check if user is active
     if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated'
-      });
+      return next(new AppError('Account is deactivated', 401, ErrorCodes.ACCOUNT_INACTIVE));
     }
 
     sendTokenResponse(user, 200, res);
@@ -110,29 +103,21 @@ export const refreshToken = async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
 
+
     if (!refreshToken) {
-      return res.status(401).json({
-        success: false,
-        message: 'Refresh token is required'
-      });
+      return next(new AppError('Refresh token is required', 401, ErrorCodes.AUTH_TOKEN_MISSING));
     }
 
     const decoded = verifyRefreshToken(refreshToken);
 
     if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid refresh token'
-      });
+      return next(new AppError('Invalid refresh token', 401, ErrorCodes.AUTH_TOKEN_INVALID));
     }
 
     const user = await User.findById(decoded.id);
 
     if (!user || !user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found or inactive'
-      });
+      return next(new AppError('User not found or inactive', 401, ErrorCodes.AUTH_TOKEN_INVALID));
     }
 
     const accessToken = generateAccessToken(user._id);
@@ -146,6 +131,7 @@ export const refreshToken = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // @desc    Update user profile
 // @route   PUT /api/auth/profile
@@ -182,14 +168,12 @@ export const changePassword = async (req, res, next) => {
 
     const user = await User.findById(req.user.id).select('+password');
 
+
     // Check current password
     const isMatch = await user.comparePassword(currentPassword);
 
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Current password is incorrect'
-      });
+      return next(new AppError('Current password is incorrect', 401, ErrorCodes.INVALID_CREDENTIALS));
     }
 
     user.password = newPassword;
@@ -200,3 +184,4 @@ export const changePassword = async (req, res, next) => {
     next(error);
   }
 };
+
