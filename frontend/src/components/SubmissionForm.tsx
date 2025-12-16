@@ -1,43 +1,65 @@
-import { useState } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { useAuth } from '../lib/auth-context';
-import { COUNTRIES } from '../lib/mock-data';
-import { submissionApi } from '../lib/api';
-import { toast } from 'sonner';
-import { Upload, Link2, FileText, CheckCircle, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from './ui/alert';
+import { useState } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { useAuth } from "../lib/auth-context";
+import { COUNTRIES } from "../lib/mock-data";
+import { submissionApi } from "../lib/api";
+import { toast } from "sonner";
+import {
+  Upload,
+  Link2,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
+import { Alert, AlertDescription } from "./ui/alert";
 
 interface SubmissionFormProps {
   onNavigate: (page: string) => void;
 }
 
-export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) => {
+export const SubmissionForm: React.FC<SubmissionFormProps> = ({
+  onNavigate,
+}) => {
   const { user, updateUser } = useAuth();
-  const [submissionType, setSubmissionType] = useState<'url' | 'pdf'>('url');
-  const [url, setUrl] = useState('');
-  const [title, setTitle] = useState('');
-  const [publisher, setPublisher] = useState('');
-  const [country, setCountry] = useState('');
-  const [category, setCategory] = useState<'primary' | 'secondary' | 'unreliable'>('secondary');
-  const [wikipediaArticle, setWikipediaArticle] = useState('');
-  const [fileName, setFileName] = useState('');
+  const [submissionType, setSubmissionType] = useState<"url" | "pdf">("url");
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
+  const [publisher, setPublisher] = useState("");
+  const [country, setCountry] = useState("");
+  const [category, setCategory] = useState<
+    "primary" | "secondary" | "unreliable"
+  >("secondary");
+  const [wikipediaArticle, setWikipediaArticle] = useState("");
+  const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB');
+        toast.error("File size must be less than 10MB");
         return;
       }
-      if (file.type !== 'application/pdf') {
-        toast.error('Only PDF files are allowed');
+      if (file.type !== "application/pdf") {
+        toast.error("Only PDF files are allowed");
         return;
       }
       setFileName(file.name);
@@ -57,29 +79,29 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
     e.preventDefault();
 
     if (!user) {
-      toast.error('Please login to submit references');
-      onNavigate('auth');
+      toast.error("Please login to submit references");
+      onNavigate("auth");
       return;
     }
 
     // Validation
-    if (submissionType === 'url' && !validateUrl(url)) {
-      toast.error('Please enter a valid URL');
+    if (submissionType === "url" && !validateUrl(url)) {
+      toast.error("Please enter a valid URL");
       return;
     }
 
-    if (submissionType === 'pdf' && !fileName) {
-      toast.error('Please upload a PDF file');
+    if (submissionType === "pdf" && !fileName) {
+      toast.error("Please upload a PDF file");
       return;
     }
 
     if (!country) {
-      toast.error('Please select a country');
+      toast.error("Please select a country");
       return;
     }
 
     if (!title || !publisher) {
-      toast.error('Please fill in all required fields');
+      toast.error("Please fill in all required fields");
       return;
     }
 
@@ -87,36 +109,39 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
 
     try {
       const response = await submissionApi.create({
-        url: submissionType === 'url' ? url : `https://uploads.wikisource.org/${fileName}`,
+        url:
+          submissionType === "url"
+            ? url
+            : `https://uploads.wikisource.org/${fileName}`,
         title,
         publisher,
         country,
         category,
         wikipediaArticle: wikipediaArticle || undefined,
         fileType: submissionType,
-        fileName: submissionType === 'pdf' ? fileName : undefined,
+        fileName: submissionType === "pdf" ? fileName : undefined,
       });
 
       if (response.success) {
-        toast.success('Reference submitted successfully! (+10 points)');
-        
+        toast.success("Reference submitted successfully! (+10 points)");
+
         // Update user points locally
         updateUser({ points: user.points + 10 });
       }
 
       // Reset form
-      setUrl('');
-      setTitle('');
-      setPublisher('');
-      setCountry('');
-      setCategory('secondary');
-      setWikipediaArticle('');
-      setFileName('');
+      setUrl("");
+      setTitle("");
+      setPublisher("");
+      setCountry("");
+      setCategory("secondary");
+      setWikipediaArticle("");
+      setFileName("");
 
       // Navigate to directory
-      setTimeout(() => onNavigate('directory'), 1500);
+      setTimeout(() => onNavigate("directory"), 1500);
     } catch (error) {
-      toast.error('Submission failed. Please try again.');
+      toast.error("Submission failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -133,7 +158,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => onNavigate('auth')}>Go to Login</Button>
+            <Button onClick={() => onNavigate("auth")}>Go to Login</Button>
           </CardContent>
         </Card>
       </div>
@@ -145,7 +170,8 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
       <div className="mb-8">
         <h1 className="mb-2">Submit Reference for Verification</h1>
         <p className="text-gray-600">
-          Help improve Wikipedia's source quality by submitting references for community review.
+          Help improve Wikipedia's source quality by submitting references for
+          community review.
         </p>
       </div>
 
@@ -157,25 +183,33 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 px-1 sm:px-0">
             {/* Submission Type */}
             <div className="space-y-2">
               <Label>Submission Type *</Label>
               <RadioGroup
                 value={submissionType}
-                onValueChange={(value) => setSubmissionType(value as 'url' | 'pdf')}
-                className="flex space-x-4"
+                onValueChange={(value) =>
+                  setSubmissionType(value as "url" | "pdf")
+                }
+                className="flex flex-col sm:flex-row gap-3"
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="url" id="type-url" />
-                  <Label htmlFor="type-url" className="cursor-pointer flex items-center space-x-2">
+                  <Label
+                    htmlFor="type-url"
+                    className="cursor-pointer flex items-center space-x-2"
+                  >
                     <Link2 className="h-4 w-4" />
                     <span>URL</span>
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="pdf" id="type-pdf" />
-                  <Label htmlFor="type-pdf" className="cursor-pointer flex items-center space-x-2">
+                  <Label
+                    htmlFor="type-pdf"
+                    className="cursor-pointer flex items-center space-x-2"
+                  >
                     <FileText className="h-4 w-4" />
                     <span>PDF Upload</span>
                   </Label>
@@ -184,7 +218,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
             </div>
 
             {/* URL or File Upload */}
-            {submissionType === 'url' ? (
+            {submissionType === "url" ? (
               <div className="space-y-2">
                 <Label htmlFor="url">Source URL *</Label>
                 <Input
@@ -202,7 +236,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
             ) : (
               <div className="space-y-2">
                 <Label htmlFor="file">Upload PDF File (Max 10MB) *</Label>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Input
                     id="file"
                     type="file"
@@ -230,6 +264,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
+                className="h-12 text-base"
               />
             </div>
 
@@ -243,6 +278,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
                 value={publisher}
                 onChange={(e) => setPublisher(e.target.value)}
                 required
+                className="h-12 text-base"
               />
             </div>
 
@@ -250,7 +286,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
             <div className="space-y-2">
               <Label htmlFor="country">Country of Origin *</Label>
               <Select value={country} onValueChange={setCountry}>
-                <SelectTrigger id="country">
+                <SelectTrigger id="country" className="h-12">
                   <SelectValue placeholder="Select country" />
                 </SelectTrigger>
                 <SelectContent>
@@ -275,8 +311,15 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
                 className="space-y-3"
               >
                 <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <RadioGroupItem value="primary" id="cat-primary" className="mt-1" />
-                  <Label htmlFor="cat-primary" className="cursor-pointer flex-1">
+                  <RadioGroupItem
+                    value="primary"
+                    id="cat-primary"
+                    className="mt-1"
+                  />
+                  <Label
+                    htmlFor="cat-primary"
+                    className="cursor-pointer flex-1"
+                  >
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="text-xl">📗</span>
                       <span>Primary Source</span>
@@ -288,8 +331,15 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
                 </div>
 
                 <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <RadioGroupItem value="secondary" id="cat-secondary" className="mt-1" />
-                  <Label htmlFor="cat-secondary" className="cursor-pointer flex-1">
+                  <RadioGroupItem
+                    value="secondary"
+                    id="cat-secondary"
+                    className="mt-1"
+                  />
+                  <Label
+                    htmlFor="cat-secondary"
+                    className="cursor-pointer flex-1"
+                  >
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="text-xl">📘</span>
                       <span>Secondary Source</span>
@@ -301,8 +351,15 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
                 </div>
 
                 <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <RadioGroupItem value="unreliable" id="cat-unreliable" className="mt-1" />
-                  <Label htmlFor="cat-unreliable" className="cursor-pointer flex-1">
+                  <RadioGroupItem
+                    value="unreliable"
+                    id="cat-unreliable"
+                    className="mt-1"
+                  />
+                  <Label
+                    htmlFor="cat-unreliable"
+                    className="cursor-pointer flex-1"
+                  >
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="text-xl">🚫</span>
                       <span>Potentially Unreliable</span>
@@ -317,10 +374,13 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
 
             {/* Wikipedia Article (Optional) */}
             <div className="space-y-2">
-              <Label htmlFor="wikipedia">Wikipedia Article URL (Optional)</Label>
+              <Label htmlFor="wikipedia">
+                Wikipedia Article URL (Optional)
+              </Label>
               <Input
                 id="wikipedia"
                 type="url"
+                className="h-12 text-base"
                 placeholder="https://en.wikipedia.org/wiki/Article_name"
                 value={wikipediaArticle}
                 onChange={(e) => setWikipediaArticle(e.target.value)}
@@ -333,13 +393,19 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                By submitting, you confirm this reference meets Wikipedia's verifiability standards.
-                Submissions will be reviewed by country verifiers.
+                By submitting, you confirm this reference meets Wikipedia's
+                verifiability standards. Submissions will be reviewed by country
+                verifiers.
               </AlertDescription>
             </Alert>
 
-            <div className="flex space-x-4">
-              <Button type="submit" disabled={loading} className="flex-1">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12"
+                onClick={() => onNavigate("directory")}
+              >
                 {loading ? (
                   <>
                     <Upload className="mr-2 h-4 w-4 animate-pulse" />
@@ -352,7 +418,11 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({ onNavigate }) =>
                   </>
                 )}
               </Button>
-              <Button type="button" variant="outline" onClick={() => onNavigate('directory')}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onNavigate("directory")}
+              >
                 Cancel
               </Button>
             </div>
