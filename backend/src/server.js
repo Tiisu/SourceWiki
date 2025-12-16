@@ -35,6 +35,21 @@ app.use((req, res, next) => {
 // Security middleware
 app.use(helmet());
 
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"]
+    }
+  })
+);
+
+
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
@@ -56,12 +71,23 @@ app.use(cors({
   credentials: true
 }));
 
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests from this IP, please try again later.'
+});
+
 // Cookie parser (needed before auth middleware)
 app.use(cookieParser());
 
 // Optional authentication middleware (populates req.user if token exists)
 // This must run before rate limiting so user info is available
 app.use(optionalAuth);
+
 
 // User-based rate limiting with role-specific limits
 // Applied to all API routes
