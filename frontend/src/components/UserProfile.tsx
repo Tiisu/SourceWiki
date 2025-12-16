@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Skeleton } from './ui/skeleton';
 import { useAuth } from '../lib/auth-context';
 import {
-  getSubmissions,
   BADGES,
   getCountryFlag,
   getCountryName,
@@ -13,26 +14,77 @@ import {
   getCategoryColor,
   getStatusColor,
 } from '../lib/mock-data';
+import { submissionApi } from '../lib/api';
+import { toast } from 'sonner';
 import { Award, TrendingUp, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
+import React from 'react';
+
+interface Submission {
+  id: string;
+  url: string;
+  title: string;
+  publisher: string;
+  country: string;
+  category: string;
+  status: string;
+  submitter?: any;
+  verifier?: any;
+  wikipediaArticle?: string;
+  verifierNotes?: string;
+  verifiedAt?: string;
+  reliability?: string;
+  fileType?: string;
+  fileName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface UserProfileProps {
   onNavigate: (page: string) => void;
 }
 
+
 export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
   const { user } = useAuth();
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      loadUserSubmissions();
+    }
+  }, [user]);
+
+  const loadUserSubmissions = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await submissionApi.getMy();
+      if (response.success) {
+        setSubmissions(response.submissions || []);
+      } else {
+        setError('Failed to load submissions');
+      }
+    } catch (error) {
+      console.error('Error loading user submissions:', error);
+      setError('Failed to load submissions. Please try again.');
+      toast.error('Failed to load submissions');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const userStats = useMemo(() => {
     if (!user) return null;
 
-    const submissions = getSubmissions();
-    const userSubmissions = submissions.filter((s) => s.submitterId === user.id);
-
-    const totalSubmissions = userSubmissions.length;
-    const verified = userSubmissions.filter((s) => s.status === 'verified').length;
-    const pending = userSubmissions.filter((s) => s.status === 'pending').length;
-    const rejected = userSubmissions.filter((s) => s.status === 'rejected').length;
-    const credible = userSubmissions.filter((s) => s.reliability === 'credible').length;
+    const totalSubmissions = submissions.length;
+    const verified = submissions.filter((s) => s.status === 'approved').length;
+    const pending = submissions.filter((s) => s.status === 'pending').length;
+    const rejected = submissions.filter((s) => s.status === 'rejected').length;
+    const credible = submissions.filter((s) => s.reliability === 'credible').length;
 
     const verificationRate =
       totalSubmissions > 0 ? Math.round((verified / totalSubmissions) * 100) : 0;
@@ -47,18 +99,32 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
       credible,
       verificationRate,
       successRate,
-      submissions: userSubmissions,
     };
-  }, [user]);
+  }, [user, submissions]);
+
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString();
+  };
+
 
   const userBadges = useMemo(() => {
     if (!user) return [];
-    return BADGES.filter((badge) => user.badges.includes(badge.id));
+    return BADGES.filter((badge) => user.badges.includes(badge.id))
+      .map((badge) => ({
+        ...badge,
+        earnedAt: new Date().toISOString(), // Mock earned date
+      }));
   }, [user]);
 
   const lockedBadges = useMemo(() => {
     if (!user) return [];
-    return BADGES.filter((badge) => !user.badges.includes(badge.id));
+    return BADGES.filter((badge) => !user.badges.includes(badge.id))
+      .map((badge) => ({
+        ...badge,
+        earnedAt: '', // Empty for locked badges
+      }));
   }, [user]);
 
   const nextMilestone = useMemo(() => {
@@ -132,6 +198,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
           </CardContent>
         </Card>
 
+
         {/* Stats Cards */}
         <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4">
           <Card>
@@ -142,7 +209,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl">{userStats?.totalSubmissions || 0}</div>
+              {loading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <div className="text-2xl">{userStats?.totalSubmissions || 0}</div>
+              )}
             </CardContent>
           </Card>
 
@@ -154,7 +225,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl text-green-600">{userStats?.verified || 0}</div>
+              {loading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <div className="text-2xl text-green-600">{userStats?.verified || 0}</div>
+              )}
             </CardContent>
           </Card>
 
@@ -166,7 +241,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl text-yellow-600">{userStats?.pending || 0}</div>
+              {loading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <div className="text-2xl text-yellow-600">{userStats?.pending || 0}</div>
+              )}
             </CardContent>
           </Card>
 
@@ -178,7 +257,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl text-blue-600">{userStats?.credible || 0}</div>
+              {loading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <div className="text-2xl text-blue-600">{userStats?.credible || 0}</div>
+              )}
             </CardContent>
           </Card>
 
@@ -190,7 +273,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl text-purple-600">{userStats?.successRate || 0}%</div>
+              {loading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <div className="text-2xl text-purple-600">{userStats?.successRate || 0}%</div>
+              )}
             </CardContent>
           </Card>
 
@@ -296,6 +383,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
           )}
         </TabsContent>
 
+
         <TabsContent value="submissions">
           <Card>
             <CardHeader>
@@ -305,7 +393,37 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {userStats?.submissions.length === 0 ? (
+              {loading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i}>
+                      <CardContent className="pt-6">
+                        <div className="flex items-start space-x-3">
+                          <Skeleton className="h-8 w-8 rounded" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-5 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                            <div className="flex gap-2">
+                              <Skeleton className="h-6 w-16" />
+                              <Skeleton className="h-6 w-20" />
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="text-center py-12">
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <button
+                    onClick={loadUserSubmissions}
+                    className="text-blue-600 hover:underline"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : submissions.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-gray-500 mb-4">No submissions yet</p>
                   <button
@@ -317,7 +435,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {userStats?.submissions.map((submission) => (
+                  {submissions.map((submission) => (
                     <Card key={submission.id}>
                       <CardContent className="pt-6">
                         <div className="flex items-start space-x-3">
@@ -357,11 +475,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
                             </div>
                             <div className="flex items-center space-x-2 text-xs text-gray-500">
                               <Calendar className="h-3 w-3" />
-                              <span>Submitted {submission.submittedDate}</span>
-                              {submission.verifiedDate && (
+                              <span>Submitted {formatDate(submission.createdAt)}</span>
+                              {submission.verifiedAt && (
                                 <>
                                   <span>•</span>
-                                  <span>Verified {submission.verifiedDate}</span>
+                                  <span>Verified {formatDate(submission.verifiedAt)}</span>
                                 </>
                               )}
                             </div>

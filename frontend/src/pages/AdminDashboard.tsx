@@ -48,6 +48,7 @@ interface Submission {
   updatedAt: string;
 }
 import { CheckCircle, XCircle, Eye, Clock, TrendingUp, Users, FileCheck } from 'lucide-react';
+import React from 'react';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();

@@ -36,6 +36,7 @@ app.use((req, res, next) => {
 // Security middleware
 app.use(helmet());
 
+
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
@@ -51,9 +52,11 @@ app.use(
 );
 
 
+
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3001',
   'http://localhost:5173',
   process.env.FRONTEND_URL
 ].filter(Boolean);

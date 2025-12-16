@@ -72,6 +72,8 @@ interface Submission {
   createdAt: string;
   updatedAt: string;
 }
+import { Search, Filter, ExternalLink, Calendar, Globe, BookOpen } from 'lucide-react';
+import React from 'react';
 import {
   Search,
   Filter,

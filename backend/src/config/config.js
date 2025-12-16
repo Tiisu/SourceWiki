@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-
 dotenv.config();
 
 const config = {
@@ -9,6 +8,8 @@ const config = {
   // Development defaults; override in production via environment variables
   jwtSecret: process.env.JWT_SECRET || 'dev_jwt_secret_change_me',
   jwtExpire: process.env.JWT_EXPIRE || '30d',
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+  jwtRefreshExpire: process.env.JWT_REFRESH_EXPIRE || '30d',
 };
 
 export default config;
