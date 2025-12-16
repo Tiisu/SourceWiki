@@ -32,6 +32,10 @@ const submissionSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
+  submittedDate: {
+    type: Date,
+    default: Date.now()
+  },
   credibility: {
     type: String,
     enum: ['credible', 'unreliable'],
