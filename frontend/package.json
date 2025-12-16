@@ -51,10 +51,11 @@
             "vaul": "^1.1.2"
       },
       "devDependencies": {
+            "@tailwindcss/postcss": "^4.1.18",
             "@types/node": "^20.10.0",
             "@types/react-router-dom": "^5.3.3",
             "@vitejs/plugin-react-swc": "^3.10.2",
-            "vite": "6.3.5"
+            "vite": "^6.4.1"
       },
       "scripts": {
             "dev": "vite",

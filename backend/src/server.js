@@ -7,8 +7,11 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+
 import connectDB from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
+import { optionalAuth } from './middleware/auth.js';
+import { userRateLimiter } from './middleware/rateLimiter.js';
 import authRoutes from './routes/authRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -38,6 +41,21 @@ app.use((req, res, next) => {
 // Security middleware
 app.use(helmet());
 
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"]
+    }
+  })
+);
+
+
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
@@ -59,21 +77,31 @@ app.use(cors({
   credentials: true
 }));
 
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
   message: 'Too many requests from this IP, please try again later.'
 });
 
-app.use('/api/', limiter);
+// Cookie parser (needed before auth middleware)
+app.use(cookieParser());
+
+// Optional authentication middleware (populates req.user if token exists)
+// This must run before rate limiting so user info is available
+app.use(optionalAuth);
+
+
+// User-based rate limiting with role-specific limits
+// Applied to all API routes
+app.use('/api/', userRateLimiter);
 
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Cookie parser
-app.use(cookieParser());
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {

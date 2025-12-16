@@ -98,15 +98,37 @@ class ApiClient {
         }
       }
 
-      const data = await response.json();
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+      
+      let data;
+      if (isJson) {
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          throw new Error('Invalid JSON response from server');
+        }
+      } else {
+        // For non-JSON responses, create a data object
+        const text = await response.text();
+        data = {
+          success: response.ok,
+          message: text || 'An error occurred',
+        };
+      }
 
       if (!response.ok) {
-        throw new Error(data.message || 'An error occurred');
+        throw new Error(data.message || `Request failed with status ${response.status}`);
       }
 
       return data;
     } catch (error) {
       if (error instanceof Error) {
+        // Check for network errors
+        if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+          throw new Error('Unable to connect to the server. Please check your connection.');
+        }
         throw error;
       }
       throw new Error('Network error occurred');
