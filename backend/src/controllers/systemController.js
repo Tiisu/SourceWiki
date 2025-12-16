@@ -1,13 +1,18 @@
+
 import User from '../models/User.js';
 import Submission from '../models/Submission.js';
 import CountryStats from '../models/CountryStats.js';
+import AppError from '../utils/AppError.js';
+import { ErrorCodes } from '../utils/errorCodes.js';
 
 class SystemController {
+
   // ============================================================================
   // SYSTEM MONITORING & MAINTENANCE
   // ============================================================================
 
-  static async getSystemHealth(req, res) {
+
+  static async getSystemHealth(req, res, next) {
     try {
       const healthData = {
         timestamp: new Date(),
@@ -63,15 +68,17 @@ class SystemController {
       res.json(healthData);
     } catch (error) {
       console.error('Health check error:', error);
-      res.status(500).json({
+      // For health check, we might want to return a specific structure even on error
+      res.status(503).json({
         status: 'unhealthy',
         timestamp: new Date(),
-        error: 'Health check failed'
+        error: 'Health check failed',
+        errorCode: ErrorCodes.SERVICE_UNAVAILABLE
       });
     }
   }
 
-  static async getSystemLogs(req, res) {
+  static async getSystemLogs(req, res, next) {
     try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 50;
@@ -122,15 +129,11 @@ class SystemController {
         }
       });
     } catch (error) {
-      console.error('System logs fetch error:', error);
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Failed to fetch system logs'
-      });
+      next(error);
     }
   }
 
-  static async getSystemStats(req, res) {
+  static async getSystemStats(req, res, next) {
     try {
       const [
         totalUsers,
@@ -173,15 +176,11 @@ class SystemController {
 
       res.json(stats);
     } catch (error) {
-      console.error('System stats fetch error:', error);
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Failed to fetch system statistics'
-      });
+      next(error);
     }
   }
 
-  static async maintainDatabase(req, res) {
+  static async maintainDatabase(req, res, next) {
     try {
       const results = {
         timestamp: new Date(),
@@ -216,15 +215,11 @@ class SystemController {
         results
       });
     } catch (error) {
-      console.error('Database maintenance error:', error);
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Failed to perform database maintenance'
-      });
+      next(error);
     }
   }
 
-  static async backupDatabase(req, res) {
+  static async backupDatabase(req, res, next) {
     try {
       // This would typically trigger a backup process
       // For now, we'll just return a mock response
@@ -237,11 +232,7 @@ class SystemController {
 
       res.json(backupInfo);
     } catch (error) {
-      console.error('Database backup error:', error);
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Failed to initiate database backup'
-      });
+      next(error);
     }
   }
 }
