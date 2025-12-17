@@ -10,6 +10,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { useState } from "react";
 import { useAuth } from "../lib/auth-context";
 import {
   DropdownMenu,
@@ -39,6 +40,7 @@ export const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -154,7 +156,7 @@ export const Navigation: React.FC = () => {
 
           {/* Mobile Menu */}
           <div className="md:hidden flex items-center space-x-4">
-            <Sheet>
+            <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-10 w-10">
                   <Menu className="h-6 w-6" />
@@ -166,7 +168,10 @@ export const Navigation: React.FC = () => {
                   <Button
                     variant={isActive("/directory") ? "default" : "ghost"}
                     className="justify-start h-12"
-                    onClick={() => navigate("/directory")}
+                    onClick={() => {
+                      navigate("/directory");
+                      setOpen(false);
+                    }}
                   >
                     <Search className="mr-2 h-5 w-5" />
                     Directory
@@ -177,7 +182,10 @@ export const Navigation: React.FC = () => {
                       <Button
                         variant={isActive("/submit") ? "default" : "ghost"}
                         className="justify-start h-12"
-                        onClick={() => navigate("/submit")}
+                        onClick={() => {
+                          navigate("/submit");
+                          setOpen(false);
+                        }}
                       >
                         <Upload className="mr-2 h-5 w-5" />
                         Submit
@@ -187,7 +195,10 @@ export const Navigation: React.FC = () => {
                         <Button
                           variant={isActive("/admin") ? "default" : "ghost"}
                           className="justify-start h-12"
-                          onClick={() => navigate("/admin")}
+                          onClick={() => {
+                            navigate("/admin");
+                            setOpen(false);
+                          }}
                         >
                           <Shield className="mr-2 h-5 w-5" />
                           Admin

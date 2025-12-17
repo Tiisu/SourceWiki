@@ -401,10 +401,9 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Button
-                type="button"
-                variant="outline"
+                type="submit"
                 className="h-12"
-                onClick={() => onNavigate("directory")}
+                disabled={loading}
               >
                 {loading ? (
                   <>
@@ -418,6 +417,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({
                   </>
                 )}
               </Button>
+
               <Button
                 type="button"
                 variant="outline"
