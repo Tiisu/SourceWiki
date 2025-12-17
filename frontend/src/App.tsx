@@ -1,15 +1,9 @@
 import React, { useEffect } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Link,
-} from "react-router-dom";
+import { Routes, Route, Link } from "react-router-dom";
+
 
 import { AuthProvider } from "./lib/auth-context";
 import { Navigation } from "./components/Navigation";
-import { Toaster } from "./components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip";
 
 import {
   LandingPage,
@@ -20,14 +14,9 @@ import {
   UserProfile,
   CountryPage,
 } from "./pages";
-
-import { initializeData } from "./lib/mock-data";
-  UserProfile
-} from './pages';
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
 import { initializeData } from './lib/mock-data';
-import CountryPage from './pages/country/CountryPage';
 
 /* -------------------- 404 Page -------------------- */
 function NotFound() {
@@ -49,55 +38,7 @@ function AppContent() {
   }, []);
 
   return (
-    <Router>
-      <div className="min-h-screen bg-white">
-        <Navigation />
-        <main>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/submit" element={<SubmissionForm />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/directory" element={<PublicDirectory />} />
-            <Route path="/profile" element={<UserProfile />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-            <Route path="/country/:slug" element={<CountryPage />} />
-          </Routes>
-        </main>
-        <Toaster position="top-right" />
-        
-        {/* Footer */}
-        <footer className="border-t mt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div>
-                <h3 className="mb-3">About WikiSourceVerifier</h3>
-                <p className="text-sm text-gray-600">
-                  A community-driven platform for verifying Wikipedia references and maintaining
-                  source quality standards.
-                </p>
-              </div>
-              <div>
-                <h3 className="mb-3">Quick Links</h3>
-                <ul className="space-y-2 text-sm">
-                  <li>
-                    <a href="/directory" className="text-gray-600 hover:text-gray-900">
-                      Browse Directory
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/submit" className="text-gray-600 hover:text-gray-900">
-                      Submit Reference
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/auth" className="text-gray-600 hover:text-gray-900">
-                      Login / Register
-                    </a>
-                  </li>
-                </ul>
     <TooltipProvider>
-      <Router>
         <div className="min-h-screen bg-white flex flex-col">
           <Navigation />
 
@@ -174,7 +115,6 @@ function AppContent() {
   );
 }
 
-/* -------------------- App Root -------------------- */
 export default function App() {
   return (
     <AuthProvider>
