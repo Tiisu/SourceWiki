@@ -36,6 +36,7 @@ app.use((req, res, next) => {
 // Security middleware
 app.use(helmet());
 
+<<<<<<< HEAD
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
@@ -52,10 +53,14 @@ app.use(
 
 
 // CORS configuration
+=======
+
+// CORS configuration - using validated config
+>>>>>>> 4533f89 (enhance form validation)
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
-  process.env.FRONTEND_URL
+  config.frontendUrl
 ].filter(Boolean);
 
 app.use(cors({
@@ -73,12 +78,19 @@ app.use(cors({
 }));
 
 
+<<<<<<< HEAD
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
+=======
+// Rate limiting - using validated config
+const limiter = rateLimit({
+  windowMs: config.rateLimitWindowMs,
+  max: config.rateLimitMax,
+>>>>>>> 4533f89 (enhance form validation)
   message: 'Too many requests from this IP, please try again later.'
 });
 
@@ -98,17 +110,28 @@ app.use('/api/', userRateLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+<<<<<<< HEAD
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {
+=======
+// Cookie parser
+app.use(cookieParser());
+
+
+// Logging middleware - using validated config
+if (config.isDevelopment) {
+>>>>>>> 4533f89 (enhance form validation)
   app.use(morgan('dev'));
 }
+
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Server is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: config.nodeEnv
   });
 });
 
@@ -121,13 +144,15 @@ app.use('/api/countries', countryRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/reports', reportsRoutes);
 
+
 // Welcome route
 app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'WikiSource Verifier API',
     version: '1.0.0',
-    documentation: '/api/docs'
+    documentation: '/api/docs',
+    environment: config.nodeEnv
   });
 });
 
@@ -142,10 +167,19 @@ app.use((req, res) => {
   });
 });
 
+<<<<<<< HEAD
 const PORT = process.env.PORT || config.port || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+=======
+
+// Start server using validated config
+const server = app.listen(config.port, () => {
+  console.log(`Server running in ${config.nodeEnv} mode on port ${config.port}`);
+  console.log(`Environment validation: PASSED`);
+  console.log(`Security configuration: ACTIVE`);
+>>>>>>> 4533f89 (enhance form validation)
 });
 
 // Handle unhandled promise rejections
