@@ -37,6 +37,7 @@ export interface Country {
   flag: string;
 }
 
+
 export const COUNTRIES: Country[] = [
   { code: 'US', name: 'United States', flag: '🇺🇸' },
   { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
@@ -53,6 +54,38 @@ export const COUNTRIES: Country[] = [
   { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
   { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
   { code: 'CN', name: 'China', flag: '🇨🇳' },
+];
+
+// Publisher suggestions for auto-completion
+export const PUBLISHER_SUGGESTIONS = [
+  // Academic & Scientific
+  'Nature Publishing Group', 'Science', 'Cell Press', 'Elsevier', 'Springer', 'IEEE', 'ACM',
+  'PLOS ONE', 'PubMed', 'arXiv', 'PubMed Central', 'BioMed Central', 'Frontiers',
+  
+  // News Organizations
+  'BBC News', 'CNN', 'Reuters', 'Associated Press', 'The Guardian', 'The New York Times',
+  'The Washington Post', 'Los Angeles Times', 'Chicago Tribune', 'NPR', 'PBS',
+  
+  // Government & Official Sources
+  'National Archives', 'Library of Congress', 'CIA World Factbook', 'UN', 'WHO', 'CDC',
+  'NIH', 'NASA', 'EPA', 'FBI', 'Department of State',
+  
+  // International Organizations
+  'World Bank', 'IMF', 'OECD', 'European Union', 'NATO', 'UNESCO', 'UNICEF',
+  
+  // Regional/Local Sources
+  'Local Government', 'City Council', 'State Legislature', 'Provincial Government',
+  
+  // NGOs & Think Tanks
+  'Human Rights Watch', 'Amnesty International', 'Brookings Institution', 'CFR',
+  'Carnegie Endowment', 'Human Rights Commission',
+  
+  // Industry Sources
+  'Reuters Institute', 'Pew Research Center', 'Gallup', 'Harris Poll',
+  
+  // Archives & Libraries
+  'Smithsonian Institution', 'British Library', 'Google Books', 'Internet Archive',
+  'Project Gutenberg', 'Wikimedia Commons'
 ];
 
 export const BADGES = [

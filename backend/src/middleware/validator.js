@@ -50,8 +50,18 @@ export const submissionValidation = [
     .trim()
     .notEmpty()
     .withMessage('URL is required')
-    .isURL()
-    .withMessage('Please provide a valid URL'),
+    .custom((value, { req }) => {
+      // For PDF fileType, URL can be any string (placeholder for file upload)
+      // For URL fileType, it must be a valid URL
+      if (req.body.fileType === 'pdf') {
+        return true; // Accept any string for PDFs
+      }
+      // For URLs, validate as proper URL
+      if (!value.match(/^https?:\/\/.+/)) {
+        throw new Error('Please provide a valid URL starting with http:// or https://');
+      }
+      return true;
+    }),
   body('title')
     .trim()
     .notEmpty()
@@ -70,7 +80,11 @@ export const submissionValidation = [
     .withMessage('Country is required'),
   body('category')
     .isIn(['primary', 'secondary', 'unreliable'])
-    .withMessage('Category must be primary, secondary, or unreliable')
+    .withMessage('Category must be primary, secondary, or unreliable'),
+  body('fileType')
+    .optional()
+    .isIn(['url', 'pdf'])
+    .withMessage('File type must be url or pdf')
 ];
 
 export const verificationValidation = [
