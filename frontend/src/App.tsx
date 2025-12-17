@@ -1,14 +1,33 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
 import { Navigation } from './components/Navigation';
-import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
+import {
+  LandingPage,
+  AuthPage,
+  SubmissionForm,
+  AdminDashboard,
+  PublicDirectory,
+  UserProfile
+} from './pages';
 import { Toaster } from './components/ui/sonner';
+import { TooltipProvider } from './components/ui/tooltip';
 import { initializeData } from './lib/mock-data';
+
+function NotFound() {
+  return (
+    <div className="text-center mt-20">
+      <h1 className="text-3xl font-bold">404</h1>
+      <p className="mt-2">Page not found</p>
+      <Link to="/" className="text-blue-600 underline mt-4 inline-block">
+        Go back home
+      </Link>
+    </div>
+  );
+}
 
 function AppContent() {
   useEffect(() => {
-    // Initialize mock data in localStorage
     initializeData();
   }, []);
 
@@ -60,27 +79,19 @@ function AppContent() {
                   </li>
                 </ul>
               </div>
-              <div>
-                <h3 className="mb-3">Resources</h3>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li>Wikipedia Verifiability Guidelines</li>
-                  <li>Reliable Sources Policy</li>
-                  <li>Community Guidelines</li>
-                  <li>API Documentation</li>
-                </ul>
+              <div className="mt-8 pt-8 border-t text-center text-sm text-gray-600">
+                <p>
+                  © 2025 WikiSourceVerifier. Built for the Wikipedia community.
+                </p>
+                <p className="mt-2">
+                  This is a demonstration platform. For production use, connect
+                  to a real backend service.
+                </p>
               </div>
             </div>
-            <div className="mt-8 pt-8 border-t text-center text-sm text-gray-600">
-              <p>© 2025 WikiSourceVerifier. Built for the Wikipedia community.</p>
-              <p className="mt-2">
-                This is a demonstration platform. For production use, connect to a real backend
-                service.
-              </p>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </Router>
+          </footer>
+        </div>
+    </TooltipProvider>
   );
 }
 

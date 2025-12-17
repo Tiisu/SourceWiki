@@ -1,22 +1,35 @@
 import { body, validationResult } from 'express-validator';
+import xss from 'xss';
+
+
+const sanitizeXSS = value => xss(value);
+
+
+
+import { ErrorCodes } from '../utils/errorCodes.js';
 
 export const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
+      errorCode: ErrorCodes.VALIDATION_ERROR,
+      message: 'Validation failed',
       errors: errors.array().map(err => ({
         field: err.path,
         message: err.msg
-      }))
+      })),
+      requestId: req.requestId
     });
   }
   next();
 };
 
+
 export const registerValidation = [
   body('username')
     .trim()
+    .customSanitizer(sanitizeXSS)
     .isLength({ min: 3, max: 30 })
     .withMessage('Username must be between 3 and 30 characters')
     .matches(/^[a-zA-Z0-9_]+$/)
@@ -35,15 +48,18 @@ export const registerValidation = [
     .withMessage('Country is required')
 ];
 
+
 export const loginValidation = [
   body('username')
     .trim()
+    .customSanitizer(sanitizeXSS)
     .notEmpty()
     .withMessage('Username is required'),
   body('password')
     .notEmpty()
     .withMessage('Password is required')
 ];
+
 
 export const submissionValidation = [
   body('url')
@@ -64,6 +80,7 @@ export const submissionValidation = [
     }),
   body('title')
     .trim()
+    .customSanitizer(sanitizeXSS)
     .notEmpty()
     .withMessage('Title is required')
     .isLength({ max: 200 })
@@ -86,6 +103,7 @@ export const submissionValidation = [
     .isIn(['url', 'pdf'])
     .withMessage('File type must be url or pdf')
 ];
+
 
 export const verificationValidation = [
   body('status')
