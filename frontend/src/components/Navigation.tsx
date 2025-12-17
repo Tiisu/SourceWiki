@@ -27,6 +27,14 @@ import { Badge } from './ui/badge';
 import { CountryNavigation } from './CountryNavigation';
 import React from 'react';
 
+
+const countries = [
+  { name: 'Ghana', slug: 'ghana' },
+  { name: 'Nigeria', slug: 'nigeria' },
+  { name: 'Kenya', slug: 'kenya' },
+];
+
+
 export const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -53,6 +61,26 @@ export const Navigation: React.FC = () => {
             </Link>
 
             <div className="hidden md:flex items-center space-x-1">
+             <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="ghost" className="flex items-center space-x-2">
+      <BookOpen className="h-4 w-4" />
+      <span>Countries</span>
+    </Button>
+  </DropdownMenuTrigger>
+
+  <DropdownMenuContent>
+    {countries.map((country) => (
+      <DropdownMenuItem
+        key={country.slug}
+        onClick={() => navigate(`/country/${country.slug}`)}
+      >
+        {country.name}
+      </DropdownMenuItem>
+    ))}
+  </DropdownMenuContent>
+</DropdownMenu>
+
               <Button
                 variant={isActive("/directory") ? "default" : "ghost"}
                 onClick={() => navigate("/directory")}
@@ -279,6 +307,28 @@ export const Navigation: React.FC = () => {
               <Search className="h-4 w-4 mr-1" />
               Directory
             </Button>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden flex items-center space-x-1 pb-3 overflow-x-auto">
+          <Button
+            variant={isActive('/directory') ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => navigate('/directory')}
+          >
+            <Search className="h-4 w-4 mr-1" />
+            Directory
+          </Button>
+
+          {user && (
+            <>
+              <Button
+                variant={isActive('/submit') ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => navigate('/submit')}
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                Submit
+              </Button>
 
             {user && (
               <>
