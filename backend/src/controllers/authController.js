@@ -7,7 +7,9 @@ import { ErrorCodes } from '../utils/errorCodes.js';
 // @route   POST /api/auth/register
 // @access  Public
 export const register = async (req, res, next) => {
+  console.log("RECEIVED BODY:", req.body); 
   try {
+    
     const { username, email, password, country } = req.body;
 
     // Create user
