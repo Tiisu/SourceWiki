@@ -88,7 +88,7 @@ export const Navigation: React.FC = () => {
           <div className="md:hidden flex items-center space-x-4">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10">
+                <Button type="button" variant="ghost" size="icon" className="h-10 w-10">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
@@ -178,7 +178,7 @@ export const Navigation: React.FC = () => {
                 className="flex items-center space-x-2"
               >
                 <LogIn className="h-4 w-4" />
-                <span>Login</span>
+                <span className="hidden sm:inline">Login</span>
               </Button>
             )}
           </div>
