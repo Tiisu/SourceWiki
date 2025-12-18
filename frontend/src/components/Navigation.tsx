@@ -24,6 +24,14 @@ import { Badge } from "./ui/badge";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 
+
+const countries = [
+  { name: 'Ghana', slug: 'ghana' },
+  { name: 'Nigeria', slug: 'nigeria' },
+  { name: 'Kenya', slug: 'kenya' },
+];
+
+
 export const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -91,6 +99,9 @@ export const Navigation: React.FC = () => {
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-10 w-10">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" className="h-10 w-10">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
@@ -104,6 +115,7 @@ export const Navigation: React.FC = () => {
                       navigate("/directory");
                       setOpen(false);
                     }}
+                    onClick={() => navigate("/directory")}
                   >
                     <Search className="mr-2 h-5 w-5" />
                     Directory
@@ -118,6 +130,7 @@ export const Navigation: React.FC = () => {
                           navigate("/submit");
                           setOpen(false);
                         }}
+                        onClick={() => navigate("/submit")}
                       >
                         <Upload className="mr-2 h-5 w-5" />
                         Submit
@@ -131,6 +144,7 @@ export const Navigation: React.FC = () => {
                             navigate("/admin");
                             setOpen(false);
                           }}
+                          onClick={() => navigate("/admin")}
                         >
                           <Shield className="mr-2 h-5 w-5" />
                           Admin
@@ -189,7 +203,7 @@ export const Navigation: React.FC = () => {
                 className="flex items-center space-x-2"
               >
                 <LogIn className="h-4 w-4" />
-                <span>Login</span>
+                <span className="hidden sm:inline">Login</span>
               </Button>
             )}
           </div>
