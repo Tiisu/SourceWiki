@@ -1,17 +1,9 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  BookOpen,
-  Search,
-  Upload,
-  User,
-  LogOut,
-  Award,
-  Shield,
-  LogIn,
-} from "lucide-react";
-import { Button } from "./ui/button";
-import { useState } from "react";
-import { useAuth } from "../lib/auth-context";
+
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { BookOpen, Search, Upload, User, LogOut, Award, Shield, LogIn } from 'lucide-react';
+import { Button } from './ui/button';
+import { useAuth } from '../lib/auth-context';
+import NotificationSystem from './NotificationSystem';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,18 +11,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { Badge } from "./ui/badge";
-import { Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
-
-
-const countries = [
-  { name: 'Ghana', slug: 'ghana' },
-  { name: 'Nigeria', slug: 'nigeria' },
-  { name: 'Kenya', slug: 'kenya' },
-];
-
+} from './ui/dropdown-menu';
+import { Badge } from './ui/badge';
+import React from 'react';
 
 export const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
@@ -94,70 +77,15 @@ export const Navigation: React.FC = () => {
             </div>
           </div>
 
-          {/* Mobile Menu */}
-          <div className="md:hidden flex items-center space-x-4">
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" className="h-10 w-10">
-                  <Menu className="h-6 w-6" />
-                </Button>
-              </SheetTrigger>
-
-              <SheetContent side="left" className="w-64">
-                <nav className="flex flex-col gap-4 mt-6">
-                  <Button
-                    variant={isActive("/directory") ? "default" : "ghost"}
-                    className="justify-start h-12"
-                    onClick={() => {
-                      navigate("/directory");
-                      setOpen(false);
-                    }}
-                    onClick={() => navigate("/directory")}
-                  >
-                    <Search className="mr-2 h-5 w-5" />
-                    Directory
-                  </Button>
-
-                  {user && (
-                    <>
-                      <Button
-                        variant={isActive("/submit") ? "default" : "ghost"}
-                        className="justify-start h-12"
-                        onClick={() => {
-                          navigate("/submit");
-                          setOpen(false);
-                        }}
-                        onClick={() => navigate("/submit")}
-                      >
-                        <Upload className="mr-2 h-5 w-5" />
-                        Submit
-                      </Button>
-
-                      {(user.role === "admin" || user.role === "verifier") && (
-                        <Button
-                          variant={isActive("/admin") ? "default" : "ghost"}
-                          className="justify-start h-12"
-                          onClick={() => {
-                            navigate("/admin");
-                            setOpen(false);
-                          }}
-                          onClick={() => navigate("/admin")}
-                        >
-                          <Shield className="mr-2 h-5 w-5" />
-                          Admin
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </nav>
-              </SheetContent>
-            </Sheet>
-          </div>
 
           <div className="flex items-center space-x-4">
+            {user && (
+              <NotificationSystem 
+                showBadge={true}
+                maxNotifications={50}
+              />
+            )}
+            
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
