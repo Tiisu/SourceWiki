@@ -8,13 +8,15 @@ import {
   SubmissionForm,
   AdminDashboard,
   PublicDirectory,
-  UserProfile
-} from './pages';
+  UserProfile,
+  CountryPage,
+} from "./pages";
 import { Toaster } from './components/ui/sonner';
 import NotificationSystem from './components/NotificationSystem';
 import { initializeData } from './lib/mock-data';
 import { TooltipProvider } from './components/ui/tooltip'; // only if needed
 
+/* -------------------- 404 Page -------------------- */
 function NotFound() {
   return (
     <div className="text-center mt-20">
@@ -27,6 +29,7 @@ function NotFound() {
   );
 }
 
+/* -------------------- App Content -------------------- */
 function AppContent() {
   useEffect(() => {
     initializeData();
@@ -34,10 +37,10 @@ function AppContent() {
 
   return (
     <TooltipProvider>
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white flex flex-col">
           <Navigation />
 
-          <main>
+          <main className="flex-1">
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/auth" element={<AuthPage />} />
@@ -58,7 +61,7 @@ function AppContent() {
 
           {/* Footer */}
           <footer className="border-t mt-16">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-4 py-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div>
                   <h3 className="mb-3">About WikiSourceVerifier</h3>
@@ -82,7 +85,6 @@ function AppContent() {
                     <li>Wikipedia Verifiability Guidelines</li>
                     <li>Reliable Sources Policy</li>
                     <li>Community Guidelines</li>
-                    <li>API Documentation</li>
                   </ul>
                 </div>
               </div>
@@ -91,9 +93,57 @@ function AppContent() {
                 <p>© 2025 WikiSourceVerifier. Built for the Wikipedia community.</p>
                 <p className="mt-2">This is a demonstration platform. For production use, connect to a real backend service.</p>
               </div>
+              <div>
+                <h3 className="mb-3">Quick Links</h3>
+                <ul className="space-y-2 text-sm">
+                  <li>
+                    <Link
+                      to="/directory"
+                      className="text-gray-600 hover:text-gray-900"
+                    >
+                      Browse Directory
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/submit"
+                      className="text-gray-600 hover:text-gray-900"
+                    >
+                      Submit Reference
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/auth"
+                      className="text-gray-600 hover:text-gray-900"
+                    >
+                      Login / Register
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="mb-3">Resources</h3>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li>Wikipedia Verifiability Guidelines</li>
+                  <li>Reliable Sources Policy</li>
+                  <li>Community Guidelines</li>
+                  <li>API Documentation</li>
+                </ul>
+              </div>
             </div>
-          </footer>
-        </div>
+            <div className="mt-8 pt-8 border-t text-center text-sm text-gray-600">
+              <p>
+                © 2025 WikiSourceVerifier. Built for the Wikipedia community.
+              </p>
+              <p className="mt-2">
+                This is a demonstration platform. For production use, connect
+                to a real backend service.
+              </p>
+            </div>
+          </div>
+        </footer>
+      </div>
     </TooltipProvider>
   );
 }
