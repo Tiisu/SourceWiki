@@ -7,3 +7,7 @@ dist/
 build/
 coverage/
 *.test.js.snap
+.env
+backend/.env
+node_modules
+backend/node_modules
