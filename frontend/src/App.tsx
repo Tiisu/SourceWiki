@@ -1,14 +1,17 @@
-import { useEffect } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
-import { AuthProvider } from './lib/auth-context';
+import React, { useEffect } from 'react';
+import { Routes, Route, Link, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './lib/auth-context';
 import { Navigation } from './components/Navigation';
 import {
   LandingPage,
   AuthPage,
+  AdminAuditLogs,
   SubmissionForm,
   AdminDashboard,
   PublicDirectory,
-  UserProfile
+  BulkUserManagement,
+  UserProfile,
+  SettingsPage,
 } from './pages';
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -26,6 +29,13 @@ function NotFound() {
   );
 }
 
+function AdminRoute({ children }: { children: JSX.Element }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/auth" replace />;
+  if (user.role !== 'admin') return <Navigate to="/" replace />;
+  return children;
+}
+
 function AppContent() {
   useEffect(() => {
     initializeData();
@@ -41,9 +51,43 @@ function AppContent() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/submit" element={<SubmissionForm />} />
-            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/directory" element={<PublicDirectory />} />
             <Route path="/profile" element={<UserProfile />} />
+
+            {/* Admin routes protected */}
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <AdminRoute>
+                  <BulkUserManagement />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/audit-logs"
+              element={
+                <AdminRoute>
+                  <AdminAuditLogs />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <AdminRoute>
+                  <SettingsPage />
+                </AdminRoute>
+              }
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
@@ -101,12 +145,9 @@ function AppContent() {
               </div>
             </div>
             <div className="mt-8 pt-8 border-t text-center text-sm text-gray-600">
-              <p>
-                © 2025 WikiSourceVerifier. Built for the Wikipedia community.
-              </p>
+              <p>© 2025 WikiSourceVerifier. Built for the Wikipedia community.</p>
               <p className="mt-2">
-                This is a demonstration platform. For production use, connect
-                to a real backend service.
+                This is a demonstration platform. For production use, connect to a real backend service.
               </p>
             </div>
           </div>

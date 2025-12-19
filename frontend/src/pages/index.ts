@@ -4,3 +4,6 @@ export { SubmissionForm } from './SubmissionForm';
 export { AdminDashboard } from './AdminDashboard';
 export { PublicDirectory } from './PublicDirectory';
 export { UserProfile } from './UserProfile';
+export { AdminAuditLogs } from './AdminAuditLogs';
+export { BulkUserManagement } from './BulkUserManagement';
+export { SettingsPage } from './SettingsPage';

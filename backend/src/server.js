@@ -1,3 +1,6 @@
+import auditRoutes from './routes/auditRoutes.js';
+
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -117,6 +120,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+// Audit logs route (mounted after app is created)
+app.use('/api/admin/audit-logs', auditRoutes);
 app.use('/api/countries', countryRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/reports', reportsRoutes);
