@@ -1,13 +1,16 @@
 import User from '../models/User.js';
 import Submission from '../models/Submission.js';
 import CountryStats from '../models/CountryStats.js';
+import AppError from '../utils/AppError.js';
+import { ErrorCodes } from '../utils/errorCodes.js';
 
 class CountryController {
   // ============================================================================
   // COUNTRY MANAGEMENT
   // ============================================================================
 
-  static async getCountries(req, res) {
+
+  static async getCountries(req, res, next) {
     try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
@@ -50,15 +53,11 @@ class CountryController {
         }
       });
     } catch (error) {
-      console.error('Countries fetch error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to fetch countries' 
-      });
+      next(error);
     }
   }
 
-  static async createCountry(req, res) {
+  static async createCountry(req, res, next) {
     try {
       const { countryCode, countryName } = req.body;
       
@@ -68,10 +67,7 @@ class CountryController {
       });
       
       if (existing) {
-        return res.status(400).json({ 
-          error: 'Conflict',
-          message: 'Country already exists' 
-        });
+        return next(new AppError('Country already exists', 400, ErrorCodes.RESOURCE_ALREADY_EXISTS));
       }
       
       const country = new CountryStats({
@@ -86,15 +82,11 @@ class CountryController {
         country 
       });
     } catch (error) {
-      console.error('Country creation error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to create country' 
-      });
+      next(error);
     }
   }
 
-  static async updateCountry(req, res) {
+  static async updateCountry(req, res, next) {
     try {
       const countryCode = req.params.code.toUpperCase();
       const updates = {};
@@ -108,10 +100,7 @@ class CountryController {
       );
       
       if (!country) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'Country not found' 
-        });
+        return next(new AppError('Country not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       res.json({ 
@@ -119,47 +108,33 @@ class CountryController {
         country 
       });
     } catch (error) {
-      console.error('Country update error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to update country' 
-      });
+      next(error);
     }
   }
 
-  static async deleteCountry(req, res) {
+  static async deleteCountry(req, res, next) {
     try {
       const countryCode = req.params.code.toUpperCase();
       
       // Check if country has submissions
       const submissionCount = await Submission.countDocuments({ country: countryCode });
       if (submissionCount > 0) {
-        return res.status(400).json({ 
-          error: 'Bad Request',
-          message: 'Cannot delete country with existing submissions' 
-        });
+        return next(new AppError('Cannot delete country with existing submissions', 400, ErrorCodes.OPERATION_NOT_ALLOWED));
       }
       
       const country = await CountryStats.findOneAndDelete({ countryCode });
       
       if (!country) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'Country not found' 
-        });
+        return next(new AppError('Country not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       res.json({ message: 'Country deleted successfully' });
     } catch (error) {
-      console.error('Country deletion error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to delete country' 
-      });
+      next(error);
     }
   }
 
-  static async getCountryStats(req, res) {
+  static async getCountryStats(req, res, next) {
     try {
       const countryCode = req.params.code.toUpperCase();
       
@@ -169,33 +144,23 @@ class CountryController {
         .populate('topVerifiers.userId', 'username email');
       
       if (!country) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'Country not found' 
-        });
+        return next(new AppError('Country not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       res.json(country);
     } catch (error) {
-      console.error('Country stats fetch error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to fetch country statistics' 
-      });
+      next(error);
     }
   }
 
-  static async updateCountryStats(req, res) {
+  static async updateCountryStats(req, res, next) {
     try {
       const countryCode = req.params.code.toUpperCase();
       
       const country = await CountryStats.findOne({ countryCode });
       
       if (!country) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'Country not found' 
-        });
+        return next(new AppError('Country not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       await country.updateStats();
@@ -205,15 +170,11 @@ class CountryController {
         country 
       });
     } catch (error) {
-      console.error('Country stats update error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to update country statistics' 
-      });
+      next(error);
     }
   }
 
-  static async assignVerifier(req, res) {
+  static async assignVerifier(req, res, next) {
     try {
       const countryCode = req.params.code.toUpperCase();
       const { userId, specializations = [] } = req.body;
@@ -224,17 +185,11 @@ class CountryController {
       ]);
       
       if (!country) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'Country not found' 
-        });
+        return next(new AppError('Country not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       if (!user) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'User not found' 
-        });
+        return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       // Check if user is already a verifier for this country
@@ -243,10 +198,7 @@ class CountryController {
       );
       
       if (existingVerifier) {
-        return res.status(400).json({ 
-          error: 'Bad Request',
-          message: 'User is already a verifier for this country' 
-        });
+        return next(new AppError('User is already a verifier for this country', 400, ErrorCodes.RESOURCE_ALREADY_EXISTS));
       }
       
       // Add verifier
@@ -271,15 +223,11 @@ class CountryController {
         country 
       });
     } catch (error) {
-      console.error('Verifier assignment error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to assign verifier' 
-      });
+      next(error);
     }
   }
 
-  static async removeVerifier(req, res) {
+  static async removeVerifier(req, res, next) {
     try {
       const countryCode = req.params.code.toUpperCase();
       const { userId } = req.body;
@@ -287,10 +235,7 @@ class CountryController {
       const country = await CountryStats.findOne({ countryCode });
       
       if (!country) {
-        return res.status(404).json({ 
-          error: 'Not Found',
-          message: 'Country not found' 
-        });
+        return next(new AppError('Country not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
       
       // Remove verifier
@@ -306,11 +251,7 @@ class CountryController {
         country 
       });
     } catch (error) {
-      console.error('Verifier removal error:', error);
-      res.status(500).json({ 
-        error: 'Internal Server Error',
-        message: 'Failed to remove verifier' 
-      });
+      next(error);
     }
   }
 }

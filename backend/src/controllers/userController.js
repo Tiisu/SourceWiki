@@ -1,5 +1,7 @@
 import User from '../models/User.js';
 import Submission from '../models/Submission.js';
+import AppError from '../utils/AppError.js';
+import { ErrorCodes } from '../utils/errorCodes.js';
 
 // @desc    Get user profile
 // @route   GET /api/users/:id
@@ -8,11 +10,9 @@ export const getUserProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id);
 
+
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     // Get user's submission stats
@@ -52,6 +52,7 @@ export const getUserProfile = async (req, res, next) => {
   }
 };
 
+
 // @desc    Get leaderboard
 // @route   GET /api/users/leaderboard
 // @access  Public
@@ -84,22 +85,17 @@ export const awardBadge = async (req, res, next) => {
   try {
     const { name, icon } = req.body;
 
+
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     // Check if badge already exists
     const badgeExists = user.badges.some(badge => badge.name === name);
     if (badgeExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already has this badge'
-      });
+      return next(new AppError('User already has this badge', 400, ErrorCodes.RESOURCE_ALREADY_EXISTS));
     }
 
     user.badges.push({ name, icon });
@@ -114,6 +110,7 @@ export const awardBadge = async (req, res, next) => {
   }
 };
 
+
 // @desc    Update user role (admin only)
 // @route   PUT /api/users/:id/role
 // @access  Private (admin)
@@ -121,11 +118,9 @@ export const updateUserRole = async (req, res, next) => {
   try {
     const { role } = req.body;
 
+
     if (!['contributor', 'verifier', 'admin'].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid role'
-      });
+      return next(new AppError('Invalid role', 400, ErrorCodes.INVALID_INPUT));
     }
 
     const user = await User.findByIdAndUpdate(
@@ -135,10 +130,7 @@ export const updateUserRole = async (req, res, next) => {
     );
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     res.status(200).json({
@@ -149,6 +141,7 @@ export const updateUserRole = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // @desc    Get all users (admin only)
 // @route   GET /api/users
@@ -201,11 +194,9 @@ export const deactivateUser = async (req, res, next) => {
       { new: true }
     );
 
+
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     res.status(200).json({
@@ -218,6 +209,7 @@ export const deactivateUser = async (req, res, next) => {
   }
 };
 
+
 // @desc    Activate user (admin only)
 // @route   PUT /api/users/:id/activate
 // @access  Private (admin)
@@ -229,11 +221,9 @@ export const activateUser = async (req, res, next) => {
       { new: true }
     );
 
+
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     res.status(200).json({
@@ -245,3 +235,4 @@ export const activateUser = async (req, res, next) => {
     next(error);
   }
 };
+

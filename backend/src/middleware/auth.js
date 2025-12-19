@@ -1,5 +1,8 @@
+
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import AppError from '../utils/AppError.js';
+import { ErrorCodes } from '../utils/errorCodes.js';
 
 export const protect = async (req, res, next) => {
   try {
@@ -15,10 +18,7 @@ export const protect = async (req, res, next) => {
     }
 
     if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Not authorized to access this route'
-      });
+      return next(new AppError('Not authorized to access this route', 401, ErrorCodes.UNAUTHORIZED_ACCESS));
     }
 
     try {
@@ -29,41 +29,26 @@ export const protect = async (req, res, next) => {
       req.user = await User.findById(decoded.id).select('-password');
 
       if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found'
-        });
+        return next(new AppError('User not found', 401, ErrorCodes.AUTHENTICATION_FAILED));
       }
 
       if (!req.user.isActive) {
-        return res.status(401).json({
-          success: false,
-          message: 'User account is deactivated'
-        });
+        return next(new AppError('User account is deactivated', 401, ErrorCodes.ACCOUNT_INACTIVE));
       }
 
       next();
     } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token is invalid or expired'
-      });
+      return next(new AppError('Token is invalid or expired', 401, ErrorCodes.TOKEN_INVALID));
     }
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Server error during authentication'
-    });
+    return next(new AppError('Server error during authentication', 500, ErrorCodes.INTERNAL_SERVER_ERROR));
   }
 };
 
 export const authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `User role '${req.user.role}' is not authorized to access this route`
-      });
+      return next(new AppError(`User role '${req.user.role}' is not authorized to access this route`, 403, ErrorCodes.UNAUTHORIZED_ACCESS));
     }
     next();
   };
