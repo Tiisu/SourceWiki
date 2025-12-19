@@ -141,7 +141,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({
       // Navigate to directory
       setTimeout(() => onNavigate("directory"), 1500);
     } catch (error) {
-      toast.error("Submission failed. Please try again.");
+      toast.error('You are offline. After connecting to the internet, your submission will be sent automatically.');
     } finally {
       setLoading(false);
     }
