@@ -10,6 +10,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { useState } from "react";
 import { useAuth } from "../lib/auth-context";
 import {
   DropdownMenu,
@@ -35,6 +36,7 @@ export const Navigation: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -57,26 +59,6 @@ export const Navigation: React.FC = () => {
             </Link>
 
             <div className="hidden md:flex items-center space-x-1">
-             <DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="ghost" className="flex items-center space-x-2">
-      <BookOpen className="h-4 w-4" />
-      <span>Countries</span>
-    </Button>
-  </DropdownMenuTrigger>
-
-  <DropdownMenuContent>
-    {countries.map((country) => (
-      <DropdownMenuItem
-        key={country.slug}
-        onClick={() => navigate(`/country/${country.slug}`)}
-      >
-        {country.name}
-      </DropdownMenuItem>
-    ))}
-  </DropdownMenuContent>
-</DropdownMenu>
-
               <Button
                 variant={isActive("/directory") ? "default" : "ghost"}
                 onClick={() => navigate("/directory")}
@@ -114,6 +96,9 @@ export const Navigation: React.FC = () => {
 
           {/* Mobile Menu */}
           <div className="md:hidden flex items-center space-x-4">
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10">
             <Sheet>
               <SheetTrigger asChild>
                 <Button type="button" variant="ghost" size="icon" className="h-10 w-10">
@@ -126,6 +111,10 @@ export const Navigation: React.FC = () => {
                   <Button
                     variant={isActive("/directory") ? "default" : "ghost"}
                     className="justify-start h-12"
+                    onClick={() => {
+                      navigate("/directory");
+                      setOpen(false);
+                    }}
                     onClick={() => navigate("/directory")}
                   >
                     <Search className="mr-2 h-5 w-5" />
@@ -137,6 +126,10 @@ export const Navigation: React.FC = () => {
                       <Button
                         variant={isActive("/submit") ? "default" : "ghost"}
                         className="justify-start h-12"
+                        onClick={() => {
+                          navigate("/submit");
+                          setOpen(false);
+                        }}
                         onClick={() => navigate("/submit")}
                       >
                         <Upload className="mr-2 h-5 w-5" />
@@ -147,6 +140,10 @@ export const Navigation: React.FC = () => {
                         <Button
                           variant={isActive("/admin") ? "default" : "ghost"}
                           className="justify-start h-12"
+                          onClick={() => {
+                            navigate("/admin");
+                            setOpen(false);
+                          }}
                           onClick={() => navigate("/admin")}
                         >
                           <Shield className="mr-2 h-5 w-5" />
@@ -210,43 +207,6 @@ export const Navigation: React.FC = () => {
               </Button>
             )}
           </div>
-        </div>
-
-
-        {/* Mobile Navigation */}
-        <div className="md:hidden flex items-center space-x-1 pb-3 overflow-x-auto">
-          <Button
-            variant={isActive('/directory') ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => navigate('/directory')}
-          >
-            <Search className="h-4 w-4 mr-1" />
-            Directory
-          </Button>
-
-          {user && (
-            <>
-              <Button
-                variant={isActive('/submit') ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => navigate('/submit')}
-              >
-                <Upload className="h-4 w-4 mr-1" />
-                Submit
-              </Button>
-
-              {(user.role === 'admin' || user.role === 'verifier') && (
-                <Button
-                  variant={isActive('/admin') ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => navigate('/admin')}
-                >
-                  <Shield className="h-4 w-4 mr-1" />
-                  Admin
-                </Button>
-              )}
-            </>
-          )}
         </div>
       </div>
     </nav>
