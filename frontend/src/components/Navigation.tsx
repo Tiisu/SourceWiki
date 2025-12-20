@@ -1,25 +1,21 @@
-<<<<<<< HEAD
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, Search, Upload, User, LogOut, Award, Shield, LogIn } from 'lucide-react';
+import { 
+  BookOpen, 
+  Search, 
+  Upload, 
+  User, 
+  LogOut, 
+  Award, 
+  Shield, 
+  LogIn, 
+  Menu,
+  Settings,
+  Users,
+  FileText
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../lib/auth-context';
-=======
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  BookOpen,
-  Search,
-  Upload,
-  User,
-  LogOut,
-  Award,
-  Shield,
-  LogIn,
-} from "lucide-react";
-import { Button } from "./ui/button";
-import { useState } from "react";
-import { useAuth } from "../lib/auth-context";
->>>>>>> 819bfefc688f7d0e0bb9c6fc9c9dd49bf37fe532
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,331 +23,155 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-<<<<<<< HEAD
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
-=======
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { Badge } from "./ui/badge";
-import { Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
->>>>>>> 819bfefc688f7d0e0bb9c6fc9c9dd49bf37fe532
+import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 
-const countries = [
-  { name: 'Ghana', slug: 'ghana' },
-  { name: 'Nigeria', slug: 'nigeria' },
-  { name: 'Kenya', slug: 'kenya' },
-];
-
-export const Navigation: React.FC = () => {
+export function Navigation() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-<<<<<<< HEAD
-=======
-  const [open, setOpen] = useState(false);
->>>>>>> 819bfefc688f7d0e0bb9c6fc9c9dd49bf37fe532
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="border-b bg-white">
+    <nav className="border-b bg-white sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center space-x-8">
-            <Link
-              to="/"
-              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
+        <div className="flex justify-between h-16 items-center">
+          
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2">
+            <div className="bg-blue-600 p-2 rounded-lg">
+              <BookOpen className="h-6 w-6 text-white" />
+            </div>
+            <span className="font-bold text-xl hidden sm:block">WikiSourceVerifier</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-6">
+            <Link 
+              to="/directory" 
+              className={`text-sm font-medium hover:text-blue-600 ${isActive('/directory') ? 'text-blue-600' : 'text-gray-600'}`}
             >
-              <BookOpen className="h-8 w-8" />
-              <div className="flex flex-col items-start">
-                <span className="font-semibold">WikiSourceVerifier</span>
-                <span className="text-xs text-gray-500">
-                  Community Reference Platform
-                </span>
-              </div>
+              Directory
+            </Link>
+            <Link 
+              to="/submit" 
+              className={`text-sm font-medium hover:text-blue-600 ${isActive('/submit') ? 'text-blue-600' : 'text-gray-600'}`}
+            >
+              Submit Reference
             </Link>
 
-            <div className="hidden md:flex items-center space-x-1">
-<<<<<<< HEAD
+            {/* Admin Links (Only for Admin) */}
+            {user?.role === 'admin' && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
-                    <BookOpen className="h-4 w-4" />
-                    <span>Countries</span>
+                  <Button variant="ghost" className="text-sm font-medium gap-1 text-blue-700">
+                    <Shield className="h-4 w-4" />
+                    Admin
                   </Button>
                 </DropdownMenuTrigger>
-
-                <DropdownMenuContent>
-                  <DropdownMenuLabel>Browse by country</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {countries.map((country) => (
-                    <DropdownMenuItem
-                      key={country.slug}
-                      onClick={() => navigate(`/country/${country.slug}`)}
-                    >
-                      {country.name}
-                    </DropdownMenuItem>
-                  ))}
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate('/admin')}>
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/admin/users')}>
+                    <Users className="mr-2 h-4 w-4" /> Bulk Users
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/admin/audit-logs')}>
+                    <FileText className="mr-2 h-4 w-4" /> Audit Logs
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
+                    <Settings className="mr-2 h-4 w-4" /> Settings
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-
-=======
->>>>>>> 819bfefc688f7d0e0bb9c6fc9c9dd49bf37fe532
-              <Button
-                variant={isActive("/directory") ? "default" : "ghost"}
-                onClick={() => navigate("/directory")}
-                className="flex items-center space-x-2"
-              >
-                <Search className="h-4 w-4" />
-                <span>Directory</span>
-              </Button>
-
-              {user && (
-                <>
-                  <Button
-                    variant={isActive("/submit") ? "default" : "ghost"}
-                    onClick={() => navigate("/submit")}
-                    className="flex items-center space-x-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span>Submit</span>
-                  </Button>
-
-                  {(user.role === "admin" || user.role === "verifier") && (
-                    <Button
-                      variant={isActive("/admin") ? "default" : "ghost"}
-                      onClick={() => navigate("/admin")}
-                      className="flex items-center space-x-2"
-                    >
-                      <Shield className="h-4 w-4" />
-                      <span>Admin</span>
-                    </Button>
-                  )}
-
-                  {user.role === 'admin' && (
-                    <>
-                      <Button
-                        variant={isActive('/admin/users') ? 'default' : 'ghost'}
-                        onClick={() => navigate('/admin/users')}
-                        className="flex items-center space-x-2"
-                      >
-                        <User className="h-4 w-4" />
-                        <span>Users</span>
-                      </Button>
-
-                      <Button
-                        variant={isActive('/admin/audit-logs') ? 'default' : 'ghost'}
-                        onClick={() => navigate('/admin/audit-logs')}
-                        className="flex items-center space-x-2"
-                      >
-                        <BookOpen className="h-4 w-4 mr-1" />
-                        <span>Audit Logs</span>
-                      </Button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* Mobile Menu */}
-          <div className="md:hidden flex items-center space-x-4">
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" className="h-10 w-10">
-                  <Menu className="h-6 w-6" />
-                </Button>
-              </SheetTrigger>
-
-              <SheetContent side="left" className="w-64">
-                <nav className="flex flex-col gap-4 mt-6">
-                  <Button
-                    variant={isActive("/directory") ? "default" : "ghost"}
-                    className="justify-start h-12"
-                    onClick={() => {
-                      navigate("/directory");
-                      setOpen(false);
-                    }}
-                    onClick={() => navigate("/directory")}
-                  >
-                    <Search className="mr-2 h-5 w-5" />
-                    Directory
-                  </Button>
-
-                  {user && (
-                    <>
-                      <Button
-                        variant={isActive("/submit") ? "default" : "ghost"}
-                        className="justify-start h-12"
-                        onClick={() => {
-                          navigate("/submit");
-                          setOpen(false);
-                        }}
-                        onClick={() => navigate("/submit")}
-                      >
-                        <Upload className="mr-2 h-5 w-5" />
-                        Submit
-                      </Button>
-
-                      {(user.role === "admin" || user.role === "verifier") && (
-                        <Button
-                          variant={isActive("/admin") ? "default" : "ghost"}
-                          className="justify-start h-12"
-                          onClick={() => {
-                            navigate("/admin");
-                            setOpen(false);
-                          }}
-                          onClick={() => navigate("/admin")}
-                        >
-                          <Shield className="mr-2 h-5 w-5" />
-                          Admin
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </nav>
-              </SheetContent>
-            </Sheet>
-          </div>
-
-          <div className="flex items-center space-x-4">
+          {/* User Auth Section */}
+          <div className="flex items-center gap-4">
             {user ? (
-<<<<<<< HEAD
-              <div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center space-x-2">
-                      <User className="h-4 w-4" />
-                      <span className="hidden sm:inline">{user.username}</span>
-                      <Badge variant="secondary" className="ml-2">
-                        {user.points ?? 0}
-                      </Badge>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>
-                      <div className="flex flex-col space-y-1">
-                        <span>{user.username}</span>
-                        <span className="text-xs text-gray-500">{user.email}</span>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/profile')}>
-                      <User className="h-4 w-4 mr-2" />
-                      Profile
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/profile')}>
-                      <Award className="h-4 w-4 mr-2" />
-                      Badges ({(user.badges && user.badges.length) || 0})
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => {
-                        logout();
-                      }}
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-=======
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center space-x-2"
-                  >
-                    <User className="h-4 w-4" />
-                    <span className="hidden sm:inline">{user.username}</span>
-                    <Badge variant="secondary" className="ml-2">
-                      {user.points}
-                    </Badge>
+                  <Button variant="ghost" className="gap-2">
+                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                      <span className="text-blue-700 font-bold">{user.username[0].toUpperCase()}</span>
+                    </div>
+                    <span className="hidden sm:inline-block">{user.username}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
+                    <div className="flex flex-col">
                       <span>{user.username}</span>
-                      <span className="text-xs text-gray-500">
-                        {user.email}
-                      </span>
+                      <span className="text-xs text-gray-500 font-normal">{user.email}</span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/profile")}>
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <User className="mr-2 h-4 w-4" /> Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/profile")}>
-                    <Award className="h-4 w-4 mr-2" />
-                    Badges ({user.badges.length})
-                  </DropdownMenuItem>
+                  {user.points !== undefined && (
+                    <div className="px-2 py-1.5 text-sm flex items-center justify-between text-yellow-600 bg-yellow-50 my-1 rounded">
+                      <span className="flex items-center gap-1"><Award className="h-3 w-3" /> Points</span>
+                      <span className="font-bold">{user.points}</span>
+                    </div>
+                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" /> Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
->>>>>>> 819bfefc688f7d0e0bb9c6fc9c9dd49bf37fe532
             ) : (
-              <Button
-                onClick={() => navigate("/auth")}
-                className="flex items-center space-x-2"
-              >
-                <LogIn className="h-4 w-4" />
-                <span className="hidden sm:inline">Login</span>
-              </Button>
+              <div className="hidden md:flex gap-2">
+                <Button variant="ghost" onClick={() => navigate('/auth')}>Log in</Button>
+                <Button onClick={() => navigate('/auth?mode=register')}>Get Started</Button>
+              </div>
             )}
+
+            {/* Mobile Menu Button (Sheet) */}
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <div className="flex flex-col gap-4 mt-6">
+                  <Link to="/directory" onClick={() => setIsOpen(false)} className="text-lg font-medium">Directory</Link>
+                  <Link to="/submit" onClick={() => setIsOpen(false)} className="text-lg font-medium">Submit Reference</Link>
+                  
+                  {user?.role === 'admin' && (
+                    <>
+                      <div className="h-px bg-gray-200 my-2" />
+                      <p className="text-sm text-gray-500 uppercase font-bold">Admin</p>
+                      <Link to="/admin" onClick={() => setIsOpen(false)} className="text-lg">Dashboard</Link>
+                      <Link to="/admin/users" onClick={() => setIsOpen(false)} className="text-lg">Bulk Users</Link>
+                      <Link to="/admin/audit-logs" onClick={() => setIsOpen(false)} className="text-lg">Audit Logs</Link>
+                      <Link to="/admin/settings" onClick={() => setIsOpen(false)} className="text-lg">Settings</Link>
+                    </>
+                  )}
+
+                  {!user && (
+                    <div className="flex flex-col gap-2 mt-4">
+                      <Button onClick={() => { navigate('/auth'); setIsOpen(false); }}>Log in</Button>
+                      <Button variant="outline" onClick={() => { navigate('/auth?mode=register'); setIsOpen(false); }}>Register</Button>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
-<<<<<<< HEAD
-
-        {/* Mobile Navigation */}
-        <div className="md:hidden flex items-center space-x-1 pb-3 overflow-x-auto">
-          <Button
-            variant={isActive('/directory') ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => navigate('/directory')}
-          >
-            <Search className="h-4 w-4 mr-1" />
-            Directory
-          </Button>
-
-          {user && (
-            <>
-              <Button
-                variant={isActive('/submit') ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => navigate('/submit')}
-              >
-                <Upload className="h-4 w-4 mr-1" />
-                Submit
-              </Button>
-
-              {(user.role === 'admin' || user.role === 'verifier') && (
-                <Button
-                  variant={isActive('/admin') ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => navigate('/admin')}
-                >
-                  <Shield className="h-4 w-4 mr-1" />
-                  Admin
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-=======
->>>>>>> 819bfefc688f7d0e0bb9c6fc9c9dd49bf37fe532
       </div>
     </nav>
   );
-};
+}
