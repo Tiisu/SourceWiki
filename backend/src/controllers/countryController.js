@@ -153,6 +153,42 @@ class CountryController {
     }
   }
 
+  static async getCountrySubmissions(req, res, next) {
+    try {
+      const countryCode = req.params.code.toUpperCase();
+      const { page = 1, limit = 20, status, category } = req.query;
+      
+      const query = { country: countryCode };
+      if (status) query.status = status;
+      if (category) query.category = category;
+      
+      const skip = (page - 1) * limit;
+      
+      const [submissions, total] = await Promise.all([
+        Submission.find(query)
+          .populate('submitter', 'username country')
+          .populate('verifier', 'username country')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(parseInt(limit)),
+        Submission.countDocuments(query)
+      ]);
+      
+      res.json({
+        success: true,
+        submissions,
+        pagination: {
+          current: parseInt(page),
+          pages: Math.ceil(total / limit),
+          total,
+          limit: parseInt(limit)
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updateCountryStats(req, res, next) {
     try {
       const countryCode = req.params.code.toUpperCase();

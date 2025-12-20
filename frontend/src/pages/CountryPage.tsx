@@ -1,34 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Calendar, User, CheckCircle, XCircle, Clock, Globe, MapPin } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Calendar, User, CheckCircle, XCircle, Clock, Globe, MapPin, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { COUNTRIES, getCountryName, getCountryFlag, getSubmissions, getCategoryIcon, getReliabilityColor, getStatusColor } from '../lib/mock-data';
+import { fetchWikidataCountryMetadata, WikidataCountryMetadata } from '../lib/wikidata-service';
+import { submissionApi } from '../lib/api';
 
 interface CountryPageProps {}
 
 export const CountryPage: React.FC<CountryPageProps> = () => {
   const { countryCode } = useParams<{ countryCode: string }>();
   const [countrySubmissions, setCountrySubmissions] = useState<any[]>([]);
+  const [countryMetadata, setCountryMetadata] = useState<WikidataCountryMetadata | null>(null);
   const [loading, setLoading] = useState(true);
+  const [metadataLoading, setMetadataLoading] = useState(true);
 
   const country = COUNTRIES.find(c => c.code === countryCode);
   const countryName = country ? country.name : 'Unknown Country';
   const countryFlag = country ? country.flag : '🌍';
 
   useEffect(() => {
-    const loadCountryData = () => {
+    const loadCountryData = async () => {
+      if (!countryCode) return;
+      
       setLoading(true);
-      const allSubmissions = getSubmissions();
-      const filtered = allSubmissions.filter(sub => sub.country === countryCode);
-      setCountrySubmissions(filtered);
-      setLoading(false);
+      setMetadataLoading(true);
+      
+      try {
+        // Try to fetch from backend API first, fallback to local storage
+        try {
+          const response = await submissionApi.getAll({ country: countryCode });
+          if (response.submissions) {
+            setCountrySubmissions(response.submissions);
+          } else {
+            // Fallback to local storage
+            const allSubmissions = getSubmissions();
+            const filtered = allSubmissions.filter(sub => sub.country === countryCode);
+            setCountrySubmissions(filtered);
+          }
+        } catch (apiError) {
+          console.log('API not available, using local data');
+          const allSubmissions = getSubmissions();
+          const filtered = allSubmissions.filter(sub => sub.country === countryCode);
+          setCountrySubmissions(filtered);
+        }
+        
+        // Fetch Wikidata metadata
+        const metadata = await fetchWikidataCountryMetadata(countryCode, countryName);
+        setCountryMetadata(metadata);
+      } catch (error) {
+        console.error('Error loading country data:', error);
+      } finally {
+        setLoading(false);
+        setMetadataLoading(false);
+      }
     };
 
     loadCountryData();
-  }, [countryCode]);
+  }, [countryCode, countryName]);
 
   if (!country) {
     return (
@@ -47,66 +79,33 @@ export const CountryPage: React.FC<CountryPageProps> = () => {
   }
 
   // Filter submissions by status
-  const verifiedSources = countrySubmissions.filter(sub => sub.status === 'verified' && sub.reliability === 'credible');
+  const verifiedSources = countrySubmissions.filter(sub => 
+    (sub.status === 'verified' || sub.status === 'approved') && 
+    (sub.reliability === 'credible' || sub.credibility === 'credible')
+  );
   const pendingSources = countrySubmissions.filter(sub => sub.status === 'pending');
-  const unreliableSources = countrySubmissions.filter(sub => sub.reliability === 'unreliable');
+  const unreliableSources = countrySubmissions.filter(sub => 
+    sub.reliability === 'unreliable' || sub.credibility === 'unreliable' || sub.status === 'rejected'
+  );
 
-
-  // Get country-specific metadata
-  const getCountryMetadata = (code: string, name: string) => {
-    const metadataMap: { [key: string]: any } = {
-      'GH': { population: '31.4 million', capital: 'Accra', languages: 'English', region: 'West Africa' },
-      'NG': { population: '223.8 million', capital: 'Abuja', languages: 'English', region: 'West Africa' },
-      'KE': { population: '55.1 million', capital: 'Nairobi', languages: 'English, Swahili', region: 'East Africa' },
-      'ZA': { population: '60.6 million', capital: 'Pretoria (Executive), Cape Town (Legislative), Bloemfontein (Judicial)', languages: '11 official languages', region: 'Southern Africa' },
-      'EG': { population: '112.7 million', capital: 'Cairo', languages: 'Arabic', region: 'North Africa' },
-      'ET': { population: '126.5 million', capital: 'Addis Ababa', languages: 'Amharic, English', region: 'East Africa' },
-      'MA': { population: '37.8 million', capital: 'Rabat', languages: 'Arabic, Berber', region: 'North Africa' },
-      'TN': { population: '12.5 million', capital: 'Tunis', languages: 'Arabic', region: 'North Africa' },
-      'UG': { population: '50.3 million', capital: 'Kampala', languages: 'English, Swahili', region: 'East Africa' },
-      'TZ': { population: '67.4 million', capital: 'Dodoma (official), Dar es Salaam (largest city)', languages: 'Swahili, English', region: 'East Africa' },
-      'RW': { population: '14.1 million', capital: 'Kigali', languages: 'Kinyarwanda, English, French', region: 'East Africa' },
-      'MZ': { population: '34.6 million', capital: 'Maputo', languages: 'Portuguese', region: 'Southern Africa' },
-      'MG': { population: '31.1 million', capital: 'Antananarivo', languages: 'Malagasy, French, English', region: 'Southern Africa' },
-      'US': { population: '339.1 million', capital: 'Washington, D.C.', languages: 'English', region: 'North America' },
-      'GB': { population: '67.8 million', capital: 'London', languages: 'English', region: 'Europe' },
-      'CA': { population: '40.1 million', capital: 'Ottawa', languages: 'English, French', region: 'North America' },
-      'AU': { population: '26.5 million', capital: 'Canberra', languages: 'English', region: 'Oceania' },
-      'DE': { population: '84.3 million', capital: 'Berlin', languages: 'German', region: 'Europe' },
-      'FR': { population: '65.6 million', capital: 'Paris', languages: 'French', region: 'Europe' },
-      'ES': { population: '47.5 million', capital: 'Madrid', languages: 'Spanish', region: 'Europe' },
-      'IT': { population: '59.0 million', capital: 'Rome', languages: 'Italian', region: 'Europe' },
-      'JP': { population: '125.4 million', capital: 'Tokyo', languages: 'Japanese', region: 'Asia' },
-      'IN': { population: '1.42 billion', capital: 'New Delhi', languages: 'Hindi, English, 22 official languages', region: 'Asia' },
-      'BR': { population: '216.4 million', capital: 'Brasília', languages: 'Portuguese', region: 'South America' },
-      'MX': { population: '128.5 million', capital: 'Mexico City', languages: 'Spanish', region: 'North America' },
-      'KR': { population: '51.8 million', capital: 'Seoul', languages: 'Korean', region: 'Asia' },
-      'CN': { population: '1.41 billion', capital: 'Beijing', languages: 'Mandarin', region: 'Asia' }
-    };
-    
-    const metadata = metadataMap[code] || { population: 'Unknown', capital: 'Unknown', languages: 'Unknown', region: 'Unknown' };
-    
-    return {
-      ...metadata,
-      wikipedia: `https://en.wikipedia.org/wiki/${name.replace(' ', '_')}`,
-      wikidata: `https://www.wikidata.org/wiki/Q${Math.floor(Math.random() * 1000000)}`
-    };
-  };
-
-  const countryMetadata = getCountryMetadata(countryCode!, countryName);
-
-  if (loading) {
+  if (loading || metadataLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-300 rounded w-1/4 mb-4"></div>
-            <div className="h-4 bg-gray-300 rounded w-1/2 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-48 bg-gray-300 rounded"></div>
+            <div className="flex items-center space-x-4 mb-8">
+              <div className="h-16 w-16 bg-gray-300 rounded-full"></div>
+              <div className="flex-1">
+                <div className="h-8 bg-gray-300 rounded w-1/3 mb-2"></div>
+                <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-300 rounded"></div>
               ))}
             </div>
+            <div className="h-64 bg-gray-300 rounded"></div>
           </div>
         </div>
       </div>
@@ -130,7 +129,12 @@ export const CountryPage: React.FC<CountryPageProps> = () => {
           <div className="flex items-center space-x-4">
             <div className="text-6xl">{countryFlag}</div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{countryName}</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {countryMetadata?.officialName || countryName}
+              </h1>
+              {countryMetadata?.description && (
+                <p className="text-gray-600 mt-1">{countryMetadata.description}</p>
+              )}
               <p className="text-lg text-gray-600">Reference Directory and Citations</p>
             </div>
           </div>
@@ -145,21 +149,21 @@ export const CountryPage: React.FC<CountryPageProps> = () => {
               <MapPin className="h-4 w-4 text-gray-500" />
               <div>
                 <div className="text-sm text-gray-500">Capital</div>
-                <div className="font-medium">{countryMetadata.capital}</div>
+                <div className="font-medium">{countryMetadata?.capital || 'N/A'}</div>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <Globe className="h-4 w-4 text-gray-500" />
               <div>
                 <div className="text-sm text-gray-500">Region</div>
-                <div className="font-medium">{countryMetadata.region}</div>
+                <div className="font-medium">{countryMetadata?.region || 'N/A'}</div>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <User className="h-4 w-4 text-gray-500" />
               <div>
                 <div className="text-sm text-gray-500">Population</div>
-                <div className="font-medium">{countryMetadata.population}</div>
+                <div className="font-medium">{countryMetadata?.population || 'N/A'}</div>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -174,7 +178,7 @@ export const CountryPage: React.FC<CountryPageProps> = () => {
           {/* Wikipedia/Wikidata Links */}
           <div className="mt-4 flex items-center space-x-4">
             <a
-              href={countryMetadata.wikipedia}
+              href={countryMetadata?.wikipediaUrl || `https://en.wikipedia.org/wiki/${countryName.replace(/ /g, '_')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
@@ -184,7 +188,7 @@ export const CountryPage: React.FC<CountryPageProps> = () => {
               <ExternalLink className="h-3 w-3" />
             </a>
             <a
-              href={countryMetadata.wikidata}
+              href={countryMetadata?.wikidataUrl || 'https://www.wikidata.org/'}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"

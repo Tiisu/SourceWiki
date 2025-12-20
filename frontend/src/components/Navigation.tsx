@@ -98,9 +98,6 @@ export const Navigation: React.FC = () => {
           <div className="md:hidden flex items-center space-x-4">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10">
-            <Sheet>
-              <SheetTrigger asChild>
                 <Button type="button" variant="ghost" size="icon" className="h-10 w-10">
                   <Menu className="h-6 w-6" />
                 </Button>
@@ -115,7 +112,6 @@ export const Navigation: React.FC = () => {
                       navigate("/directory");
                       setOpen(false);
                     }}
-                    onClick={() => navigate("/directory")}
                   >
                     <Search className="mr-2 h-5 w-5" />
                     Directory
@@ -130,7 +126,6 @@ export const Navigation: React.FC = () => {
                           navigate("/submit");
                           setOpen(false);
                         }}
-                        onClick={() => navigate("/submit")}
                       >
                         <Upload className="mr-2 h-5 w-5" />
                         Submit
@@ -144,7 +139,6 @@ export const Navigation: React.FC = () => {
                             navigate("/admin");
                             setOpen(false);
                           }}
-                          onClick={() => navigate("/admin")}
                         >
                           <Shield className="mr-2 h-5 w-5" />
                           Admin
