@@ -7,6 +7,7 @@ const router = express.Router();
 // Public routes
 router.get('/', CountryController.getCountries);
 router.get('/:code/stats', CountryController.getCountryStats);
+router.get('/:code/submissions', CountryController.getCountrySubmissions);
 
 // Protected routes (admin only)
 router.use(protect);
