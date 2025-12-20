@@ -76,6 +76,19 @@ app.use(cors({
 }));
 
 
+// Body parser
+app.use(express.json());
+app.use((req, res, next) => {
+  console.log('--------------------------------');
+  console.log('DEBUG CHECK:');
+  console.log('Content-Type:', req.get('Content-Type'));
+  console.log('Req Body:', req.body);
+  console.log('--------------------------------');
+  next();
+});
+app.use(express.urlencoded({ extended: true }));
+// Cookie parser (needed before auth middleware)
+app.use(cookieParser());
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -86,7 +99,7 @@ const limiter = rateLimit({
 });
 
 // Cookie parser (needed before auth middleware)
-app.use(cookieParser());
+// app.use(cookieParser());
 
 // Optional authentication middleware (populates req.user if token exists)
 // This must run before rate limiting so user info is available
@@ -98,8 +111,8 @@ app.use(optionalAuth);
 app.use('/api/', userRateLimiter);
 
 // Body parser
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {

@@ -2,6 +2,8 @@ import Submission from '../models/Submission.js';
 import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import { ErrorCodes } from '../utils/errorCodes.js';
+// 1. IMPORT THE EMAIL SERVICE
+import { sendEmail } from '../services/emailService.js';
 
 // @desc    Create new submission
 // @route   POST /api/submissions
@@ -27,8 +29,43 @@ export const createSubmission = async (req, res, next) => {
       $inc: { points: 10 }
     });
 
+    // 2. IMPORTANT: Added 'email' to populate so we can send the notification
     const populatedSubmission = await Submission.findById(submission._id)
-      .populate('submitter', 'username country');
+      .populate('submitter', 'username country email');
+
+    // --- EMAIL NOTIFICATION LOGIC START ---
+    try {
+      const submitterEmail = populatedSubmission.submitter.email;
+      const submitterName = populatedSubmission.submitter.username;
+      
+      // Email A: Notify Submitter
+      const submitterHtml = `
+        <h3>Hello ${submitterName},</h3>
+        <p>Your submission for <strong>${title}</strong> has been received.</p>
+        <p>It is now pending review by a verifier for <strong>${country}</strong>.</p>
+        <p>Best,<br>WikiSourceVerifier Team</p>
+      `;
+      
+      // Email B: Notify Verifier
+      // Helper function to find the right email (defined at bottom of file)
+      const verifierEmail = getVerifierEmail(country);
+      const verifierHtml = `
+        <h3>New Submission Pending Review</h3>
+        <p>User <strong>${submitterName}</strong> submitted a new source for <strong>${country}</strong>.</p>
+        <p>Please log in to verify.</p>
+      `;
+
+      // Send both emails (using Promise.allSettled so one failure doesn't stop the other)
+      await Promise.allSettled([
+        sendEmail(submitterEmail, "Submission Received", submitterHtml),
+        sendEmail(verifierEmail, `Action Required: New Submission for ${country}`, verifierHtml)
+      ]);
+
+    } catch (emailErr) {
+      // Log error but don't fail the request
+      console.error("Email notification failed:", emailErr);
+    }
+    // --- EMAIL NOTIFICATION LOGIC END ---
 
     res.status(201).json({
       success: true,
@@ -216,12 +253,9 @@ export const verifySubmission = async (req, res, next) => {
       return next(new AppError('Submission has already been verified', 400, ErrorCodes.SUBMISSION_LOCKED));
     }
 
-    // Handle different verification outcomes
     if (status === 'rejected') {
-      // Rejected submissions don't need credibility rating
       submission.status = 'rejected';
     } else if (status === 'approved' && credibility) {
-      // Approved with credibility rating
       submission.status = 'approved';
       submission.credibility = credibility;
     } else if (status === 'approved' && !credibility) {
@@ -236,16 +270,13 @@ export const verifySubmission = async (req, res, next) => {
 
     await submission.save();
 
-    // Award points to submitter if approved
     if (status === 'approved') {
-      // More points for credible sources
       const points = credibility === 'credible' ? 25 : 10;
       await User.findByIdAndUpdate(submission.submitter, {
         $inc: { points: points }
       });
     }
 
-    // Award points to verifier
     await User.findByIdAndUpdate(req.user.id, {
       $inc: { points: 5 }
     });
@@ -271,11 +302,8 @@ export const getPendingSubmissionsForCountry = async (req, res, next) => {
     const { page = 1, limit = 20 } = req.query;
     const skip = (page - 1) * limit;
 
-    // Build query based on user role
     let query = { status: 'pending' };
     
-    // If user is admin, show all pending submissions
-    // If user is verifier, show only their country's submissions
     if (req.user.role !== 'admin') {
       query.country = req.user.country;
     }
@@ -307,7 +335,6 @@ export const getPendingSubmissionsForCountry = async (req, res, next) => {
 export const getSubmissionStats = async (req, res, next) => {
   try {
     const { country } = req.query;
-
     const matchStage = country ? { country } : {};
 
     const stats = await Submission.aggregate([
@@ -316,54 +343,42 @@ export const getSubmissionStats = async (req, res, next) => {
         $group: {
           _id: null,
           total: { $sum: 1 },
-          pending: {
-            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
-          },
-          approved: {
-            $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] }
-          },
-          rejected: {
-            $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] }
-          },
-          primary: {
-            $sum: { $cond: [{ $eq: ['$category', 'primary'] }, 1, 0] }
-          },
-          secondary: {
-            $sum: { $cond: [{ $eq: ['$category', 'secondary'] }, 1, 0] }
-          },
-          unreliable: {
-            $sum: { $cond: [{ $eq: ['$category', 'unreliable'] }, 1, 0] }
-          }
+          pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+          approved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } },
+          primary: { $sum: { $cond: [{ $eq: ['$category', 'primary'] }, 1, 0] } },
+          secondary: { $sum: { $cond: [{ $eq: ['$category', 'secondary'] }, 1, 0] } },
+          unreliable: { $sum: { $cond: [{ $eq: ['$category', 'unreliable'] }, 1, 0] } }
         }
       }
     ]);
 
     const countryStats = await Submission.aggregate([
       { $match: matchStage },
-      {
-        $group: {
-          _id: '$country',
-          count: { $sum: 1 }
-        }
-      },
+      { $group: { _id: '$country', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 10 }
     ]);
 
     res.status(200).json({
       success: true,
-      stats: stats[0] || {
-        total: 0,
-        pending: 0,
-        approved: 0,
-        rejected: 0,
-        primary: 0,
-        secondary: 0,
-        unreliable: 0
-      },
+      stats: stats[0] || { total: 0, pending: 0, approved: 0, rejected: 0, primary: 0, secondary: 0, unreliable: 0 },
       topCountries: countryStats
     });
   } catch (error) {
     next(error);
   }
+};
+
+// Helper: Get Verifier Email based on Country
+// This uses the ENV variables you set up earlier
+const getVerifierEmail = (country) => {
+    // You can add more countries here as needed
+    const verifiers = {
+        'Ghana': process.env.GHANA_VERIFIER_EMAIL,
+        'Nigeria': process.env.NIGERIA_VERIFIER_EMAIL,
+    };
+    
+    // Return specific verifier or fallback to Admin Email (or a default)
+    return verifiers[country] || process.env.ADMIN_EMAIL || 'admin@wikisourceverifier.org';
 };
