@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -30,6 +30,7 @@ import {
 } from '../lib/mock-data';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
+import { CheckCircle, XCircle, Eye, Clock, TrendingUp, Users, FileCheck } from 'lucide-react';
 
 interface Submission {
   id: string;
@@ -39,15 +40,18 @@ interface Submission {
   country: string;
   category: string;
   status: string;
-  submitter?: any;
+  submitterName?: string;
   verifier?: any;
   wikipediaArticle?: string;
   verifierNotes?: string;
   verifiedAt?: string;
+  verifiedDate?: string;
+  submittedDate?: string;
+  mediaType?: string;
+  reliability?: 'credible' | 'unreliable' | string;
   createdAt: string;
   updatedAt: string;
 }
-import { CheckCircle, XCircle, Eye, Clock, TrendingUp, Users, FileCheck } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -62,30 +66,35 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     loadSubmissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadSubmissions = async () => {
     if (!user) return;
-    
     setLoading(true);
     try {
-      // Load pending submissions for verifier's country
       if (user.role === 'verifier' || user.role === 'admin') {
         const response = await submissionApi.getPendingForCountry();
         if (response.success) {
-          setSubmissions(response.submissions);
+          setSubmissions(response.submissions || []);
+        } else {
+          setSubmissions([]);
         }
       }
     } catch (error) {
       toast.error('Failed to load submissions');
+      setSubmissions([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify = async (submission: Submission, status: 'approved' | 'rejected', credibility?: 'credible' | 'unreliable') => {
+  const handleVerify = async (
+    submission: Submission,
+    status: 'approved' | 'rejected',
+    credibility?: 'credible' | 'unreliable'
+  ) => {
     if (!user) return;
-
     setLoading(true);
     try {
       const response = await submissionApi.verify(
@@ -96,17 +105,22 @@ export const AdminDashboard: React.FC = () => {
       );
 
       if (response.success) {
-        toast.success(
-          `Reference ${status === 'approved' ? '✅ Approved' : '❌ Rejected'} (+5 points)`
-        );
-        
-        // Update user points locally
-        if (user) {
-          user.points += 5;
+        if (status === 'approved') {
+          toast.success('Reference approved (+5 points)');
+          // award points to current user locally (avoid mutating context directly)
+          // best-effort local update; real backend will persist
+          try {
+            // some auth contexts expose a setter; if not, this is only local visual
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const anyUser: any = user as any;
+            if (typeof anyUser.points === 'number') anyUser.points = anyUser.points + 5;
+          } catch {}
+        } else {
+          toast.success('Reference rejected');
         }
-        
-        // Reload submissions
         await loadSubmissions();
+      } else {
+        toast.error('Verification failed (server)');
       }
     } catch (error) {
       toast.error('Failed to verify submission');
@@ -119,7 +133,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleReject = async (submission: Submission) => {
-    await handleVerify(submission, 'rejected');
+    await handleVerify(submission, 'rejected', 'unreliable');
   };
 
   const openVerificationDialog = (submission: Submission) => {
@@ -128,12 +142,10 @@ export const AdminDashboard: React.FC = () => {
     setShowDialog(true);
   };
 
-  const getPendingSubmissions = () => {
-    return submissions.filter((s) => s.status === 'pending');
-  };
+  const getPendingSubmissions = () => submissions.filter((s) => s.status === 'pending');
 
   const getVerifiedSubmissions = () => {
-    let filtered = submissions.filter((s) => s.status === 'verified');
+    let filtered = submissions.filter((s) => s.status === 'verified' || s.status === 'approved');
 
     if (filterCategory !== 'all') {
       filtered = filtered.filter((s) => s.category === filterCategory);
@@ -141,12 +153,12 @@ export const AdminDashboard: React.FC = () => {
 
     if (filterDate === 'today') {
       const today = new Date().toISOString().split('T')[0];
-      filtered = filtered.filter((s: any) => s.verifiedDate === today);
+      filtered = filtered.filter((s) => s.verifiedDate && s.verifiedDate.startsWith(today));
     } else if (filterDate === 'week') {
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       const weekAgoStr = weekAgo.toISOString().split('T')[0];
-      filtered = filtered.filter((s: any) => s.verifiedDate && s.verifiedDate >= weekAgoStr);
+      filtered = filtered.filter((s) => s.verifiedDate && s.verifiedDate >= weekAgoStr);
     }
 
     return filtered;
@@ -155,9 +167,8 @@ export const AdminDashboard: React.FC = () => {
   const getStats = () => {
     const total = submissions.length;
     const pending = submissions.filter((s) => s.status === 'pending').length;
-    const verified = submissions.filter((s) => s.status === 'verified').length;
-    const credible = submissions.filter((s: any) => s.reliability === 'credible').length;
-
+    const verified = submissions.filter((s) => s.status === 'verified' || s.status === 'approved').length;
+    const credible = submissions.filter((s) => s.reliability === 'credible').length;
     return { total, pending, verified, credible };
   };
 
@@ -185,14 +196,27 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
-      <div className="mb-8">
-        <h1 className="mb-2">Verification Dashboard</h1>
-        <p className="text-gray-600">
-          Review and verify reference submissions from the community
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="mb-2">Verification Dashboard</h1>
+          <p className="text-gray-600">Review and verify reference submissions from the community</p>
+        </div>
+
+        {user.role === 'admin' && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/admin/users')}>
+              <Users className="h-4 w-4 mr-2" /> Users
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/admin/audit-logs')}>
+              <FileCheck className="h-4 w-4 mr-2" /> Audit Logs
+            </Button>
+            <Button variant="default" onClick={() => navigate('/admin/settings')}>
+              ⚙️ Settings
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-3">
@@ -243,12 +267,9 @@ export const AdminDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Tabs */}
       <Tabs defaultValue="pending" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="pending">
-            Pending ({pendingSubmissions.length})
-          </TabsTrigger>
+          <TabsTrigger value="pending">Pending ({pendingSubmissions.length})</TabsTrigger>
           <TabsTrigger value="verified">Verified ({verifiedSubmissions.length})</TabsTrigger>
         </TabsList>
 
@@ -263,7 +284,7 @@ export const AdminDashboard: React.FC = () => {
             </Card>
           ) : (
             <div className="space-y-4">
-              {pendingSubmissions.map((submission: any) => (
+              {pendingSubmissions.map((submission) => (
                 <Card key={submission.id}>
                   <CardContent className="pt-6">
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -284,44 +305,27 @@ export const AdminDashboard: React.FC = () => {
                                 {submission.mediaType === 'pdf' ? '📄 PDF' : '🔗 URL'}
                               </Badge>
                             </div>
-                            <a
-                              href={submission.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:underline block mb-2"
-                            >
+                            <a href={submission.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline block mb-2">
                               {submission.url}
                             </a>
                             {submission.wikipediaArticle && (
-                              <a
-                                href={submission.wikipediaArticle}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-gray-500 hover:underline block"
-                              >
+                              <a href={submission.wikipediaArticle} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-500 hover:underline block">
                                 📖 Wikipedia Article
                               </a>
                             )}
                             <p className="text-sm text-gray-500 mt-2">
-                              Submitted by {submission.submitterName} on {submission.submittedDate}
+                              Submitted by {submission.submitterName ?? 'Unknown'} on {submission.submittedDate ?? '—'}
                             </p>
                           </div>
                         </div>
                       </div>
 
                       <div className="flex flex-col space-y-2 min-w-[160px]">
-                        <Button
-                          variant="default"
-                          className="bg-green-600 hover:bg-green-700"
-                          onClick={() => openVerificationDialog(submission)}
-                        >
+                        <Button variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => openVerificationDialog(submission)}>
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Review
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => window.open(submission.url, '_blank')}
-                        >
+                        <Button variant="outline" onClick={() => window.open(submission.url, '_blank')}>
                           <Eye className="h-4 w-4 mr-2" />
                           View Source
                         </Button>
@@ -361,7 +365,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {verifiedSubmissions.map((submission: any) => (
+            {verifiedSubmissions.map((submission) => (
               <Card key={submission.id}>
                 <CardContent className="pt-6">
                   <div className="flex items-start space-x-3">
@@ -387,24 +391,15 @@ export const AdminDashboard: React.FC = () => {
                           {getCountryFlag(submission.country)} {getCountryName(submission.country)}
                         </Badge>
                       </div>
-                      <a
-                        href={submission.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:underline block mb-2"
-                      >
+                      <a href={submission.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline block mb-2">
                         {submission.url}
                       </a>
                       {submission.verifierNotes && (
                         <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                          <p className="text-sm">
-                            <strong>Verification Notes:</strong> {submission.verifierNotes}
-                          </p>
+                          <p className="text-sm"><strong>Verification Notes:</strong> {submission.verifierNotes}</p>
                         </div>
                       )}
-                      <p className="text-sm text-gray-500 mt-2">
-                        Verified on {submission.verifiedDate}
-                      </p>
+                      <p className="text-sm text-gray-500 mt-2">Verified on {submission.verifiedDate ?? '—'}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -414,14 +409,11 @@ export const AdminDashboard: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Verification Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Verify Reference</DialogTitle>
-            <DialogDescription>
-              Review this submission and mark it as credible or unreliable
-            </DialogDescription>
+            <DialogDescription>Review this submission and mark it as credible or unreliable</DialogDescription>
           </DialogHeader>
 
           {selectedSubmission && (
@@ -434,16 +426,10 @@ export const AdminDashboard: React.FC = () => {
                     {getCategoryIcon(selectedSubmission.category)} {selectedSubmission.category}
                   </Badge>
                   <Badge variant="outline">
-                    {getCountryFlag(selectedSubmission.country)}{' '}
-                    {getCountryName(selectedSubmission.country)}
+                    {getCountryFlag(selectedSubmission.country)} {getCountryName(selectedSubmission.country)}
                   </Badge>
                 </div>
-                <a
-                  href={selectedSubmission.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:underline"
-                >
+                <a href={selectedSubmission.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
                   {selectedSubmission.url}
                 </a>
               </div>
@@ -461,26 +447,15 @@ export const AdminDashboard: React.FC = () => {
           )}
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => selectedSubmission && handleReject(selectedSubmission)}
-              className="w-full sm:w-auto"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Reject
+            <Button variant="outline" onClick={() => selectedSubmission && handleReject(selectedSubmission)} className="w-full sm:w-auto">
+              <XCircle className="h-4 w-4 mr-2" /> Reject
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'approved', 'unreliable')}
-              className="w-full sm:w-auto"
-            >
+
+            <Button variant="destructive" onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'rejected', 'unreliable')} className="w-full sm:w-auto">
               🚫 Mark Unreliable
             </Button>
-            <Button
-              variant="default"
-              className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-              onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'approved', 'credible')}
-            >
+
+            <Button variant="default" className="bg-green-600 hover:bg-green-700 w-full sm:w-auto" onClick={() => selectedSubmission && handleVerify(selectedSubmission, 'approved', 'credible')}>
               ✅ Mark Credible
             </Button>
           </DialogFooter>
