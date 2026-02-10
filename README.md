@@ -33,13 +33,13 @@ Before setting up the project, ensure you have:
 ```bash
 # Check if already installed
 node --version
-npm --version
+
 
 # If not installed, download from https://nodejs.org/
 # Or use a version manager like nvm:
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-nvm install 18
-nvm use 18
+nvm install 24
+nvm use 24
 ```
 
 #### MongoDB
