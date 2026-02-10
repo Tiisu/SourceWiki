@@ -92,3 +92,5 @@ Thumbs.db
 # Uploads
 uploads/
 temp/
+
+/server
