@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { useAuth } from '../lib/auth-context';
-import { COUNTRIES } from '../lib/mock-data';
+import { COUNTRIES } from '../lib/format-utils';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
 import { Upload, Link2, FileText, CheckCircle, AlertCircle } from 'lucide-react';

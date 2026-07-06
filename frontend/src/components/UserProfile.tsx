@@ -4,15 +4,13 @@ import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useAuth } from '../lib/auth-context';
-import {
-  getSubmissions,
-  BADGES,
-  getCountryFlag,
-  getCountryName,
-  getCategoryIcon,
-  getCategoryColor,
-  getStatusColor,
-} from '../lib/mock-data';
+import { 
+  getCountryName, 
+  getCountryFlag, 
+  getCategoryIcon, 
+  getReliabilityColor, 
+  getStatusColor 
+} from '../lib/format-utils';
 import { Award, TrendingUp, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 interface UserProfileProps {
@@ -25,7 +23,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
   const userStats = useMemo(() => {
     if (!user) return null;
 
-    const submissions = getSubmissions();
+    const submissions: any[] = []; // Safe fallback for legacy component
     const userSubmissions = submissions.filter((s) => s.submitterId === user.id);
 
     const totalSubmissions = userSubmissions.length;

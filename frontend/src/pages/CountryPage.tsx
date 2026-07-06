@@ -5,7 +5,8 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { COUNTRIES, getCountryName, getCountryFlag, getSubmissions, getCategoryIcon, getReliabilityColor, getStatusColor } from '../lib/mock-data';
+import { COUNTRIES, getCountryName, getCountryFlag, getCategoryIcon, getReliabilityColor, getStatusColor } from '../lib/format-utils';
+import { toast } from 'sonner';
 import { fetchWikidataCountryMetadata, WikidataCountryMetadata } from '../lib/wikidata-service';
 import { submissionApi } from '../lib/api';
 
@@ -30,25 +31,20 @@ export const CountryPage: React.FC<CountryPageProps> = () => {
       setMetadataLoading(true);
       
       try {
-        // Try to fetch from backend API first, fallback to local storage
+        // Fetch from backend API directly
         try {
           const response = await submissionApi.getAll({ country: countryCode });
-          if (response.submissions) {
+          if (response && response.submissions) {
             setCountrySubmissions(response.submissions);
           } else {
-            // Fallback to local storage
-            const allSubmissions = getSubmissions();
-            const filtered = allSubmissions.filter(sub => sub.country === countryCode);
-            setCountrySubmissions(filtered);
+            setCountrySubmissions([]);
           }
         } catch (apiError) {
-          console.log('API not available, using local data');
-          const allSubmissions = getSubmissions();
-          const filtered = allSubmissions.filter(sub => sub.country === countryCode);
-          setCountrySubmissions(filtered);
+          console.error('API not available or failed:', apiError);
+          setCountrySubmissions([]); // Safe empty fallback array
         }
-        
-        // Fetch Wikidata metadata
+
+        // Fetch Wikidata metadata (Kept intact!)
         const metadata = await fetchWikidataCountryMetadata(countryCode, countryName);
         setCountryMetadata(metadata);
       } catch (error) {
