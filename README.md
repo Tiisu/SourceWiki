@@ -22,7 +22,7 @@ WikiSourceVerifier helps Wikipedia editors crowdsource and curate credible, coun
 
 Before setting up the project, ensure you have:
 
-- **Node.js** (v18+ recommended)
+- **Node.js** (v24+ recommended)
 - **npm** (comes with Node.js)
 - **MongoDB** (local installation or MongoDB Atlas account)
 - **Git**
