@@ -96,9 +96,6 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.'
 });
 
-// Cookie parser (needed before auth middleware)
-// app.use(cookieParser());
-
 // Optional authentication middleware (populates req.user if token exists)
 // This must run before rate limiting so user info is available
 app.use(optionalAuth);
@@ -107,10 +104,6 @@ app.use(optionalAuth);
 // User-based rate limiting with role-specific limits
 // Applied to all API routes
 app.use('/api/', userRateLimiter);
-
-// Body parser
-// app.use(express.json());
-// app.use(express.urlencoded({ extended: true }));
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {
