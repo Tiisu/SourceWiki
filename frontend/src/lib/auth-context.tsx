@@ -18,6 +18,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
+  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<boolean>;
   logout: () => void;
   register: (username: string, email: string, password: string, country: string) => Promise<boolean>;
   updateUser: (updates: Partial<User>) => void;
@@ -62,6 +63,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Login failed');
+      return false;
+    }
+  };
+
+  const loginWithTokens = async (accessToken: string, refreshToken: string): Promise<boolean> => {
+    try {
+      api.setTokens(accessToken, refreshToken);
+      const response = await authApi.getMe();
+      if (response.success && response.user) {
+        setUser(response.user);
+        toast.success('Login successful!');
+        return true;
+      }
+      api.clearAuth();
+      toast.error('Failed to get user profile');
+      return false;
+    } catch (error) {
+      api.clearAuth();
+      toast.error('Login failed');
       return false;
     }
   };
@@ -122,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithTokens, logout, register, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

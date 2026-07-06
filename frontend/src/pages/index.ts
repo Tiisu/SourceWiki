@@ -7,3 +7,4 @@ export { AdminDashboard } from './AdminDashboard';
 export { PublicDirectory } from './PublicDirectory';
 export { UserProfile } from './UserProfile';
 export { CountryPage } from './CountryPage';
+export { OAuthCallback } from './OAuthCallback';
