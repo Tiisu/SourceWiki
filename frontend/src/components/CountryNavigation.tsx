@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
-import { COUNTRIES, getCountryName, getCountryFlag } from '../lib/mock-data';
+import { COUNTRIES, getCountryName, getCountryFlag } from '../lib/format-utils';
 
 export const CountryNavigation: React.FC = () => {
   const navigate = useNavigate();

@@ -19,7 +19,7 @@ import {
 } from "./ui/select";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { useAuth } from "../lib/auth-context";
-import { COUNTRIES } from "../lib/mock-data";
+import { COUNTRIES } from "../lib/format-utils";
 import { submissionApi } from "../lib/api";
 import { toast } from "sonner";
 import {

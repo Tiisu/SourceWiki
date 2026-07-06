@@ -19,7 +19,7 @@ import {
   getCountryFlag,
   getCountryName,
   getReliabilityColor,
-} from '../lib/mock-data';
+} from '../lib/format-utils';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
 

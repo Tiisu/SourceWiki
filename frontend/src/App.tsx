@@ -17,7 +17,7 @@ import {
 } from "./pages";
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
-import { initializeData } from './lib/mock-data';
+
 
 /* -------------------- 404 Page -------------------- */
 function NotFound() {
@@ -34,10 +34,6 @@ function NotFound() {
 
 /* -------------------- App Content -------------------- */
 function AppContent() {
-  useEffect(() => {
-    initializeData();
-  }, []);
-
   return (
     <TooltipProvider>
         <div className="min-h-screen bg-white flex flex-col">
