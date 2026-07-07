@@ -337,7 +337,7 @@ class AdminController {
   static async overrideSubmission(req, res, next) {
     try {
       const submissionId = req.params.id;
-      const { status, adminNotes, reason } = req.body;
+      const { status, credibility, adminNotes, reason } = req.body;
       
       const submission = await Submission.findById(submissionId);
       if (!submission) {
@@ -350,6 +350,11 @@ class AdminController {
       
       // Update submission
       submission.status = status;
+      if (status === 'approved') {
+        submission.credibility = credibility;
+      } else {
+        submission.credibility = undefined;
+      }
       submission.verifier = req.user._id;
       submission.verifiedAt = new Date();
       submission.verifierNotes = adminNotes;

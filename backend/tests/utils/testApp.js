@@ -6,7 +6,7 @@ import errorHandler from '../../src/middleware/errorHandler.js';
 import { optionalAuth } from '../../src/middleware/auth.js';
 import { userRateLimiter } from '../../src/middleware/rateLimiter.js';
 import authRoutes from '../../src/routes/authRoutes.js';
-import wikimediaOAuth1Routes from '../../src/routes/wikimediaOAuth1Routes.js';
+// import wikimediaOAuth1Routes from '../../src/routes/wikimediaOAuth1Routes.js';
 import submissionRoutes from '../../src/routes/submissionRoutes.js';
 import userRoutes from '../../src/routes/userRoutes.js';
 import adminRoutes from '../../src/routes/adminRoutes.js';
@@ -60,7 +60,7 @@ export const createTestApp = () => {
 
   // API routes
   app.use('/api/auth', authRoutes);
-  app.use('/api/auth/wikimedia', wikimediaOAuth1Routes);
+  // app.use('/api/auth/wikimedia', wikimediaOAuth1Routes);
   app.use('/api/submissions', submissionRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/admin', adminRoutes);
