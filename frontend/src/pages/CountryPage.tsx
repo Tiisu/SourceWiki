@@ -5,7 +5,8 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { COUNTRIES, getCountryName, getCountryFlag, getSubmissions, getCategoryIcon, getReliabilityColor, getStatusColor } from '../lib/mock-data';
+import { getSubmissions, getCategoryIcon, getReliabilityColor, getStatusColor } from '../lib/mock-data';
+import { useCountries } from '../lib/CountriesContext';
 import { fetchWikidataCountryMetadata, WikidataCountryMetadata } from '../lib/wikidata-service';
 import { submissionApi } from '../lib/api';
 
@@ -18,9 +19,10 @@ export const CountryPage: React.FC<CountryPageProps> = () => {
   const [loading, setLoading] = useState(true);
   const [metadataLoading, setMetadataLoading] = useState(true);
 
-  const country = COUNTRIES.find(c => c.code === countryCode);
-  const countryName = country ? country.name : 'Unknown Country';
-  const countryFlag = country ? country.flag : '🌍';
+  const { countries, getCountryName, getCountryFlag } = useCountries();
+  const country = countries.find(c => c.code === countryCode);
+  const countryName = country ? country.name : (countryCode ? getCountryName(countryCode) : 'Unknown Country');
+  const countryFlag = country ? country.flag : (countryCode ? getCountryFlag(countryCode) : '🌍');
 
   useEffect(() => {
     const loadCountryData = async () => {

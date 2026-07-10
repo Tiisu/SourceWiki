@@ -19,7 +19,7 @@ import {
 } from "./ui/select";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { useAuth } from "../lib/auth-context";
-import { COUNTRIES } from "../lib/mock-data";
+import { useCountries } from "../lib/CountriesContext";
 import { submissionApi } from "../lib/api";
 import { toast } from "sonner";
 import {
@@ -39,6 +39,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({
   onNavigate,
 }) => {
   const { user, updateUser } = useAuth();
+  const { countries } = useCountries();
   const [submissionType, setSubmissionType] = useState<"url" | "pdf">("url");
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -290,7 +291,7 @@ export const SubmissionForm: React.FC<SubmissionFormProps> = ({
                   <SelectValue placeholder="Select country" />
                 </SelectTrigger>
                 <SelectContent>
-                  {COUNTRIES.map((c) => (
+                  {countries.map((c) => (
                     <SelectItem key={c.code} value={c.code}>
                       {c.flag} {c.name}
                     </SelectItem>

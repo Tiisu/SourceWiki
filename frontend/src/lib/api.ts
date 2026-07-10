@@ -284,4 +284,17 @@ export const userApi = {
   activate: (id: string) => api.put(`/users/${id}/activate`),
 };
 
+// Country API
+export const countryApi = {
+  getAll: (params?: { search?: string; sortBy?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) query.append(key, String(value));
+      });
+    }
+    return api.get(`/countries?${query.toString()}`);
+  },
+};
+
 export default api;
