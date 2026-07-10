@@ -12,14 +12,11 @@ import {
   TableHeader,
   TableRow,
 } from './ui/table';
-import {
-  COUNTRIES,
   getCategoryIcon,
   getCategoryColor,
-  getCountryFlag,
-  getCountryName,
   getReliabilityColor,
 } from '../lib/mock-data';
+import { useCountries } from '../lib/CountriesContext';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
 
@@ -48,6 +45,7 @@ interface PublicDirectoryProps {
 }
 
 export const PublicDirectory: React.FC<PublicDirectoryProps> = ({ onNavigate }) => {
+  const { countries, getCountryName, getCountryFlag } = useCountries();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCountry, setFilterCountry] = useState<string>('all');
@@ -234,7 +232,7 @@ export const PublicDirectory: React.FC<PublicDirectoryProps> = ({ onNavigate }) 
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Countries</SelectItem>
-                {COUNTRIES.map((country) => (
+                {countries.map((country) => (
                   <SelectItem key={country.code} value={country.code}>
                     {country.flag} {country.name}
                   </SelectItem>

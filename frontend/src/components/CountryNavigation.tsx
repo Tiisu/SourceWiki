@@ -11,15 +11,17 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
-import { COUNTRIES, getCountryName, getCountryFlag } from '../lib/mock-data';
+import { useCountries } from '../lib/CountriesContext';
 
 export const CountryNavigation: React.FC = () => {
   const navigate = useNavigate();
+  const { countries } = useCountries();
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
-  // Get African countries (first 12 countries in the list)
-  const africanCountries = COUNTRIES.slice(0, 12);
-  const otherCountries = COUNTRIES.slice(12);
+  // Get African countries
+  const AFRICAN_COUNTRY_CODES = ['BW', 'KE', 'NG', 'ZA', 'GH', 'UG', 'TZ', 'RW', 'ZW', 'MZ', 'ZM', 'SN'];
+  const africanCountries = countries.filter(c => AFRICAN_COUNTRY_CODES.includes(c.code));
+  const otherCountries = countries.filter(c => !AFRICAN_COUNTRY_CODES.includes(c.code));
 
   const handleCountrySelect = (countryCode: string) => {
     setSelectedCountry(countryCode);

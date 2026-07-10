@@ -3,6 +3,7 @@ import { Routes, Route, Link } from "react-router-dom";
 
 
 import { AuthProvider } from "./lib/auth-context";
+import { CountriesProvider } from "./lib/CountriesContext";
 import { Navigation } from "./components/Navigation";
 import { CountryNavigation } from "./components/CountryNavigation";
 
@@ -125,8 +126,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <CountriesProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </CountriesProvider>
   );
 }

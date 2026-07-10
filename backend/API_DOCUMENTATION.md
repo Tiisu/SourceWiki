@@ -5,6 +5,41 @@
 http://localhost:5000/api
 ```
 
+## Global Endpoints (Root Level)
+
+These endpoints are accessible at the root URL (`http://localhost:5000`), outside the `/api` prefix.
+
+### API Welcome
+**GET** `/`
+
+Welcome route providing API version and basic information.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "WikiSource Verifier API",
+  "version": "1.0.0",
+  "documentation": "/api/docs"
+}
+```
+
+---
+
+### Global Health Check
+**GET** `/health`
+
+Basic server health check.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Server is running",
+  "timestamp": "2025-01-16T14:20:00.000Z"
+}
+```
+
 ## Authentication
 The API uses JWT (JSON Web Tokens) for authentication. Include the token in the Authorization header:
 ```
@@ -252,7 +287,8 @@ Submit a new reference for verification.
   "country": "Ghana",
   "category": "secondary",
   "wikipediaArticle": "https://en.wikipedia.org/wiki/Climate_change",
-  "fileType": "url"
+  "fileType": "url",
+  "fileName": "report_2024.pdf"
 }
 ```
 
@@ -468,9 +504,12 @@ Verify or reject a submission (verifier/admin only).
 ```json
 {
   "status": "approved",
+  "credibility": "credible",
   "verifierNotes": "Credible government source with proper citations"
 }
 ```
+
+*Note: The `credibility` field is required when `status` is set to `approved`.*
 
 **Response (200):**
 ```json
@@ -749,6 +788,575 @@ Activate a user account (admin only).
   "success": true,
   "message": "User activated successfully",
   "user": { ... }
+}
+```
+
+---
+
+## Admin Endpoints
+
+### Get Dashboard
+**GET** `/admin/dashboard`
+
+Get global statistics and recent activity for the admin dashboard.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Response (200):**
+```json
+{
+  "globalStats": {
+    "totalUsers": 250,
+    "totalSubmissions": 500,
+    "usersByRole": { "contributor": 200, "verifier": 40, "admin": 10 },
+    "submissionsByStatus": { "approved": 400, "pending": 50, "rejected": 50 }
+  },
+  "charts": {
+    "submissionsByCountry": [ ],
+    "topCountries": [ ]
+  },
+  "recentActivity": [ ]
+}
+```
+
+---
+
+### Get Analytics
+**GET** `/admin/analytics`
+
+Get trends and verification speed analytics.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Query Parameters:**
+- `period` (optional, default: 30d): 7d, 30d, 90d, 1y
+- `country` (optional): Filter by country code
+
+**Response (200):**
+```json
+{
+  "period": "30d",
+  "country": "GH",
+  "trends": [ ],
+  "verificationSpeed": [ ],
+  "generated": "2025-01-16T14:20:00.000Z"
+}
+```
+
+---
+
+### Get Users (Admin)
+**GET** `/admin/users`
+
+Get all users with their submission statistics.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Query Parameters:**
+- `page`, `limit`, `role`, `country`, `status` (active/inactive), `search`
+
+**Response (200):**
+```json
+{
+  "users": [
+    {
+      "_id": "...",
+      "username": "johndoe",
+      "submissionStats": { "total": 10, "approved": 8, "pending": 1, "rejected": 1 }
+    }
+  ],
+  "pagination": { }
+}
+```
+
+---
+
+### Update User
+**PUT** `/admin/users/:id`
+
+Update any user's role, status, points, or badges.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Request Body:**
+```json
+{
+  "role": "verifier",
+  "isActive": true,
+  "country": "GH",
+  "points": 150,
+  "badges": [ ]
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "User updated successfully",
+  "user": { }
+}
+```
+
+---
+
+### Delete User (Soft Delete)
+**DELETE** `/admin/users/:id`
+
+Soft delete a user account.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Response (200):**
+```json
+{
+  "message": "User deleted successfully",
+  "user": { }
+}
+```
+
+---
+
+### Get Submissions (Admin)
+**GET** `/admin/submissions`
+
+Get submissions with advanced filtering.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Query Parameters:**
+- `page`, `limit`, `status`, `category`, `country`, `search`
+
+**Response (200):**
+```json
+{
+  "submissions": [ ],
+  "pagination": { }
+}
+```
+
+---
+
+### Override Submission Status
+**PUT** `/admin/submissions/:id/override`
+
+Admin override for a submission's status.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Request Body:**
+```json
+{
+  "status": "approved",
+  "adminNotes": "Overridden by admin after review",
+  "reason": "Additional verification found"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Submission override successful",
+  "submission": { }
+}
+```
+
+---
+
+### Delete Submission (Admin)
+**DELETE** `/admin/submissions/:id`
+
+Permanently delete a submission.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Request Body (Optional):**
+```json
+{
+  "reason": "Spam"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Submission deleted successfully"
+}
+```
+
+---
+
+## Country Endpoints
+
+### Get All Countries
+**GET** `/countries`
+
+Get a paginated list of countries and their statistics.
+
+**Query Parameters:**
+- `page` (optional, default: 1)
+- `limit` (optional, default: 20)
+- `search` (optional): Search by country name or code
+- `sortBy` (optional): name, submissions, verifiers, or activity
+
+**Response (200):**
+```json
+{
+  "countries": [ ],
+  "pagination": {
+    "current": 1,
+    "pages": 5,
+    "total": 100,
+    "limit": 20
+  }
+}
+```
+
+---
+
+### Get Country Stats
+**GET** `/countries/:code/stats`
+
+Get detailed statistics and top contributors/verifiers for a specific country.
+
+**Response (200):**
+```json
+{
+  "countryCode": "GH",
+  "countryName": "Ghana",
+  "statistics": { },
+  "topContributors": [ ],
+  "topVerifiers": [ ]
+}
+```
+
+---
+
+### Get Country Submissions
+**GET** `/countries/:code/submissions`
+
+Get submissions for a specific country.
+
+**Query Parameters:**
+- `page`, `limit`, `status`, `category`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "submissions": [ ],
+  "pagination": { }
+}
+```
+
+---
+
+### Create Country (Admin)
+**POST** `/countries`
+
+Create a new country record.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Request Body:**
+```json
+{
+  "countryCode": "GH",
+  "countryName": "Ghana"
+}
+```
+
+**Response (201):**
+```json
+{
+  "message": "Country created successfully",
+  "country": { }
+}
+```
+
+---
+
+### Update Country (Admin)
+**PUT** `/countries/:code`
+
+Update country details.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Request Body:**
+```json
+{
+  "countryName": "New Name"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Country updated successfully",
+  "country": { }
+}
+```
+
+---
+
+### Delete Country (Admin)
+**DELETE** `/countries/:code`
+
+Delete a country record (only if it has no submissions).
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Response (200):**
+```json
+{
+  "message": "Country deleted successfully"
+}
+```
+
+---
+
+### Update Country Stats (Admin)
+**POST** `/countries/:code/update-stats`
+
+Manually trigger an update of country statistics.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Response (200):**
+```json
+{
+  "message": "Country statistics updated successfully",
+  "country": { }
+}
+```
+
+---
+
+### Assign Verifier (Admin)
+**POST** `/countries/:code/assign-verifier`
+
+Assign a user as a verifier for a country.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Request Body:**
+```json
+{
+  "userId": "507f1f77bcf86cd799439011",
+  "specializations": ["environment", "health"]
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Verifier assigned successfully",
+  "country": { }
+}
+```
+
+---
+
+### Remove Verifier (Admin)
+**POST** `/countries/:code/remove-verifier`
+
+Remove a verifier from a country.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Request Body:**
+```json
+{
+  "userId": "507f1f77bcf86cd799439011"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Verifier removed successfully",
+  "country": { }
+}
+```
+
+---
+
+## Reports Endpoints
+
+### Get Overview Report
+**GET** `/reports/overview`
+
+Get a general overview report.
+
+**Headers:** `Authorization: Bearer <token>` (Verifier or Admin)
+
+**Query Parameters:**
+- `startDate` (optional, defaults to 30 days ago)
+- `endDate` (optional, defaults to now)
+- `country` (optional)
+
+**Response (200):**
+```json
+{
+  "period": { "startDate": "...", "endDate": "...", "country": "all" },
+  "summary": { "totalSubmissions": 500, "approvedSubmissions": 400, "approvalRate": 80 },
+  "breakdown": { "byCategory": [ ], "byCountry": [ ] },
+  "generated": "2025-01-16T14:20:00.000Z"
+}
+```
+
+---
+
+### Get Country Report
+**GET** `/reports/country/:country`
+
+Get a detailed report for a specific country.
+
+**Headers:** `Authorization: Bearer <token>` (Verifier or Admin)
+
+**Query Parameters:**
+- `startDate` (optional)
+- `endDate` (optional)
+
+**Response (200):**
+```json
+{
+  "country": { "code": "GH", "name": "Ghana" },
+  "period": { },
+  "summary": { },
+  "breakdown": { },
+  "currentStats": { },
+  "generated": "..."
+}
+```
+
+---
+
+### Get User Report
+**GET** `/reports/user/:userId`
+
+Get a detailed report of a user's submissions.
+
+**Headers:** `Authorization: Bearer <token>` (Verifier or Admin)
+
+**Query Parameters:**
+- `startDate` (optional)
+- `endDate` (optional)
+
+**Response (200):**
+```json
+{
+  "user": { "id": "...", "username": "..." },
+  "period": { },
+  "summary": { },
+  "breakdown": { },
+  "generated": "..."
+}
+```
+
+---
+
+## System Endpoints
+
+### Get System Health
+**GET** `/system/health`
+
+Get overall system health and database connectivity.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Response (200):**
+```json
+{
+  "timestamp": "2025-01-16T14:20:00.000Z",
+  "status": "healthy",
+  "database": "connected",
+  "issues": []
+}
+```
+
+---
+
+### Get System Logs
+**GET** `/system/logs`
+
+Get system activity logs.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Query Parameters:**
+- `page`, `limit`, `startDate`, `endDate`
+
+**Response (200):**
+```json
+{
+  "logs": [
+    {
+      "timestamp": "...",
+      "level": "info",
+      "action": "submission_created",
+      "details": { }
+    }
+  ],
+  "pagination": { }
+}
+```
+
+---
+
+### Get System Stats
+**GET** `/system/stats`
+
+Get raw system statistics (users, submissions, memory usage).
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Response (200):**
+```json
+{
+  "users": { "total": 250, "active": 240, "inactive": 10 },
+  "submissions": { "total": 500, "pending": 50, "processed": 450 },
+  "countries": { "total": 195, "active": 150, "inactive": 45 },
+  "system": { "uptime": 3600, "memory": { }, "timestamp": "..." }
+}
+```
+
+---
+
+### Maintain Database
+**POST** `/system/maintenance`
+
+Trigger database maintenance tasks (e.g. updating stats, cleaning tokens).
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Response (200):**
+```json
+{
+  "message": "Database maintenance completed",
+  "results": {
+    "timestamp": "...",
+    "operations": [ "Updated stats for Ghana", "Cleaned up refresh tokens for 5 users" ]
+  }
+}
+```
+
+---
+
+### Backup Database
+**POST** `/system/backup`
+
+Initiate a database backup process.
+
+**Headers:** `Authorization: Bearer <token>` (Admin only)
+
+**Response (200):**
+```json
+{
+  "timestamp": "...",
+  "status": "initiated",
+  "message": "Database backup process started",
+  "backupId": "backup_1234567890"
 }
 ```
 

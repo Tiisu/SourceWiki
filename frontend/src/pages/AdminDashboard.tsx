@@ -24,10 +24,9 @@ import { useAuth } from '../lib/auth-context';
 import {
   getCategoryIcon,
   getCategoryColor,
-  getCountryFlag,
-  getCountryName,
   getStatusColor,
 } from '../lib/mock-data';
+import { useCountries } from '../lib/CountriesContext';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
 
@@ -52,6 +51,7 @@ import { CheckCircle, XCircle, Eye, Clock, TrendingUp, Users, FileCheck } from '
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { getCountryName, getCountryFlag } = useCountries();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [verificationNotes, setVerificationNotes] = useState('');
