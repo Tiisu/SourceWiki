@@ -20,9 +20,11 @@ export const CountryPage: React.FC<CountryPageProps> = () => {
   const [metadataLoading, setMetadataLoading] = useState(true);
 
   const { countries, getCountryName, getCountryFlag } = useCountries();
-  const country = countries.find(c => c.code === countryCode);
-  const countryName = country ? country.name : (countryCode ? getCountryName(countryCode) : 'Unknown Country');
-  const countryFlag = country ? country.flag : (countryCode ? getCountryFlag(countryCode) : '🌍');
+  const country =
+    countries.find((c) => c.code === countryCode) ??
+    (countryCode ? { code: countryCode, name: getCountryName(countryCode), flag: getCountryFlag(countryCode) } : undefined);
+  const countryName = country?.name ?? 'Unknown Country';
+  const countryFlag = country?.flag ?? '🌍';
 
   useEffect(() => {
     const loadCountryData = async () => {

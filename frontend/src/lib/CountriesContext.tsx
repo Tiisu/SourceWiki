@@ -61,14 +61,14 @@ interface CountriesContextType {
 const CountriesContext = createContext<CountriesContextType | undefined>(undefined);
 
 export const CountriesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [countries, setCountries] = useState<Country[]>([]);
+  const [countries, setCountries] = useState<Country[]>(FALLBACK_COUNTRIES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCountries = async () => {
       try {
-        const response = await countryApi.getAll({ limit: 200 });
+        const response = await countryApi.getAll({ limit: 200, sortBy: 'name' });
         if (response.countries && Array.isArray(response.countries)) {
           const mappedCountries = response.countries.map((c: any) => ({
             code: c.countryCode,

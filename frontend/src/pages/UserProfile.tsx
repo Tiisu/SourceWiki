@@ -32,6 +32,7 @@ import {
 import { useAuth } from '../lib/auth-context';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
+import { useCountries } from '../lib/CountriesContext';
 
 /* ------------------ BADGES ------------------ */
 
@@ -99,8 +100,6 @@ interface Submission {
   page?: number;
   pages?: number;
 }
-
-import { useCountries } from '../lib/CountriesContext';
 
 /* ------------------ COMPONENT ------------------ */
 
