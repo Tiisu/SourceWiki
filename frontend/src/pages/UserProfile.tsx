@@ -100,23 +100,13 @@ interface Submission {
   pages?: number;
 }
 
-/* ------------------ HELPERS ------------------ */
-
-const getCountryFlag = (country?: string) => {
-  const flags: Record<string, string> = {
-    Botswana: '🇧🇼',
-    USA: '🇺🇸',
-    UK: '🇬🇧',
-    Kenya: '🇰🇪',
-    Nigeria: '🇳🇬',
-  };
-  return country ? flags[country] ?? '🌍' : '🌍';
-};
+import { useCountries } from '../lib/CountriesContext';
 
 /* ------------------ COMPONENT ------------------ */
 
 export const UserProfile = () => {
   const { user,token } = useAuth();
+  const { getCountryFlag } = useCountries();
 
   /* ---------- SAFE USER ---------- */
   const safeUser = {
@@ -431,9 +421,6 @@ useEffect(() => {
                           {sub.status === 'rejected' && <XCircle className="h-5 w-5 text-red-600" />}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{sub.title}</p>
-                            {/* <p className="text-xs text-gray-500">
-                              {new Date(sub.submittedDate).toLocaleDateString()}
-                            </p> */}
                           </div>
                           
                         </div>

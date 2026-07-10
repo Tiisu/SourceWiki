@@ -7,13 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useAuth } from '../lib/auth-context';
-import { COUNTRIES } from '../lib/mock-data';
+import { useCountries } from '../lib/CountriesContext';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
 export const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, register } = useAuth();
+  const { countries } = useCountries();
   const [loading, setLoading] = useState(false);
 
   // Login form state
@@ -177,7 +178,7 @@ export const AuthPage: React.FC = () => {
                         <SelectValue placeholder="Select your country" />
                       </SelectTrigger>
                       <SelectContent>
-                        {COUNTRIES.map((country) => (
+                        {countries.map((country) => (
                           <SelectItem key={country.code} value={country.code}>
                             {country.flag} {country.name}
                           </SelectItem>

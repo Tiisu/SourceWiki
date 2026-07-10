@@ -39,39 +39,6 @@ export interface Country {
 
 
 
-export const COUNTRIES: Country[] = [
-  // African Countries (Primary Focus)
-  { code: 'GH', name: 'Ghana', flag: '🇬🇭' },
-  { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
-  { code: 'KE', name: 'Kenya', flag: '🇰🇪' },
-  { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
-  { code: 'EG', name: 'Egypt', flag: '🇪🇬' },
-  { code: 'ET', name: 'Ethiopia', flag: '🇪🇹' },
-  { code: 'MA', name: 'Morocco', flag: '🇲🇦' },
-  { code: 'TN', name: 'Tunisia', flag: '🇹🇳' },
-  { code: 'UG', name: 'Uganda', flag: '🇺🇬' },
-  { code: 'TZ', name: 'Tanzania', flag: '🇹🇿' },
-  { code: 'RW', name: 'Rwanda', flag: '🇷🇼' },
-  { code: 'MZ', name: 'Mozambique', flag: '🇲🇿' },
-  { code: 'MG', name: 'Madagascar', flag: '🇲🇬' },
-  
-  // Other Countries
-  { code: 'US', name: 'United States', flag: '🇺🇸' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
-  { code: 'FR', name: 'France', flag: '🇫🇷' },
-  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
-  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
-  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
-  { code: 'IN', name: 'India', flag: '🇮🇳' },
-  { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
-  { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
-  { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
-  { code: 'CN', name: 'China', flag: '🇨🇳' },
-];
-
 export const BADGES = [
   { id: 'first-submission', name: 'First Submission', icon: '🌟', description: 'Submitted your first reference' },
   { id: '10-verified', name: '10 Verified Sources', icon: '✅', description: 'Had 10 sources verified' },
@@ -329,13 +296,6 @@ export const STORAGE_KEYS = {
 };
 
 // Utility functions
-export const getCountryName = (code: string): string => {
-  return COUNTRIES.find(c => c.code === code)?.name || code;
-};
-
-export const getCountryFlag = (code: string): string => {
-  return COUNTRIES.find(c => c.code === code)?.flag || '🌍';
-};
 
 export const getCategoryIcon = (category: string): string => {
   switch (category) {

@@ -4,15 +4,13 @@ import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useAuth } from '../lib/auth-context';
-import {
   getSubmissions,
   BADGES,
-  getCountryFlag,
-  getCountryName,
   getCategoryIcon,
   getCategoryColor,
   getStatusColor,
 } from '../lib/mock-data';
+import { useCountries } from '../lib/CountriesContext';
 import { Award, TrendingUp, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 interface UserProfileProps {
@@ -21,6 +19,7 @@ interface UserProfileProps {
 
 export const UserProfile: React.FC<UserProfileProps> = ({ onNavigate }) => {
   const { user } = useAuth();
+  const { getCountryName, getCountryFlag } = useCountries();
 
   const userStats = useMemo(() => {
     if (!user) return null;
