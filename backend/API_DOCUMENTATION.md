@@ -1,4 +1,4 @@
-﻿# WikiSource Verifier API Documentation
+# WikiSource Verifier API Documentation
 
 ## Base URL
 ```

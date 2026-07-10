@@ -18,9 +18,10 @@ export const CountryNavigation: React.FC = () => {
   const { countries } = useCountries();
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
-  // Get African countries (first 12 countries in the list)
-  const africanCountries = countries.slice(0, 12);
-  const otherCountries = countries.slice(12);
+  // Get African countries
+  const AFRICAN_COUNTRY_CODES = ['BW', 'KE', 'NG', 'ZA', 'GH', 'UG', 'TZ', 'RW', 'ZW', 'MZ', 'ZM', 'SN'];
+  const africanCountries = countries.filter(c => AFRICAN_COUNTRY_CODES.includes(c.code));
+  const otherCountries = countries.filter(c => !AFRICAN_COUNTRY_CODES.includes(c.code));
 
   const handleCountrySelect = (countryCode: string) => {
     setSelectedCountry(countryCode);
