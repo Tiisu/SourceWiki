@@ -1,287 +1,141 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Simple centralized API client for SourceWiki
+// Includes: Admin endpoints, Settings, Audit logs, Auth, and Submissions
 
-interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  errors?: Array<{ field: string; message: string }>;
+export type ApiResult<T> = { success: true; data: T } | { success: false; error: string };
+
+const BASE = import.meta.env.VITE_API_URL ?? '';
+const DEV_USER_HEADER = import.meta.env.VITE_DEV_USER ?? '';
+
+function buildHeaders(isJson = true): HeadersInit {
+  const h: HeadersInit = {};
+  if (isJson) h['Content-Type'] = 'application/json';
+  
+  // Auth Token handling
+  const token = localStorage.getItem('token');
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  
+  if (DEV_USER_HEADER) h['x-dev-user'] = DEV_USER_HEADER;
+  return h;
 }
 
-class ApiClient {
-  private baseURL: string;
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
-
-  constructor(baseURL: string) {
-    this.baseURL = baseURL;
-    this.loadTokens();
-  }
-
-  private loadTokens() {
-    this.accessToken = localStorage.getItem('accessToken');
-    this.refreshToken = localStorage.getItem('refreshToken');
-  }
-
-  private saveTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-  }
-
-  private clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-  }
-
-  private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
-
-    try {
-      const response = await fetch(`${this.baseURL}/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        this.saveTokens(data.accessToken, this.refreshToken!);
-        return true;
-      }
-      
-      this.clearTokens();
-      return false;
-    } catch (error) {
-      this.clearTokens();
-      return false;
-    }
-  }
-
-  async request<T = any>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    };
-
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
-    try {
-      let response = await fetch(url, {
-        ...options,
-        headers,
-        credentials: 'include',
-      });
-
-      // If unauthorized and we have a refresh token, try to refresh
-      if (response.status === 401 && this.refreshToken) {
-        const refreshed = await this.refreshAccessToken();
-        if (refreshed) {
-          // Retry the request with new token
-          headers['Authorization'] = `Bearer ${this.accessToken}`;
-          response = await fetch(url, {
-            ...options,
-            headers,
-            credentials: 'include',
-          });
-        }
-      }
-
-      // Check if response is JSON before parsing
-      const contentType = response.headers.get('content-type');
-      const isJson = contentType && contentType.includes('application/json');
-      
-      let data;
-      if (isJson) {
-        try {
-          data = await response.json();
-        } catch (parseError) {
-          throw new Error('Invalid JSON response from server');
-        }
-      } else {
-        // For non-JSON responses, create a data object
-        const text = await response.text();
-        data = {
-          success: response.ok,
-          message: text || 'An error occurred',
-        };
-      }
-
-      if (!response.ok) {
-        throw new Error(data.message || `Request failed with status ${response.status}`);
-      }
-
-      return data;
-    } catch (error) {
-      if (error instanceof Error) {
-        // Check for network errors
-        if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
-          throw new Error('Unable to connect to the server. Please check your connection.');
-        }
-        throw error;
-      }
-      throw new Error('Network error occurred');
-    }
-  }
-
-  async get<T = any>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' });
-  }
-
-  async post<T = any>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+// Core Fetch Function
+async function apiFetch<T>(path: string, opts: RequestInit = {}): Promise<ApiResult<T>> {
+  try {
+    // Handle FormData automatically
+    const isFormData = opts.body instanceof FormData;
+    
+    const res = await fetch(`${BASE}${path}`, {
+      credentials: 'include',
+      ...opts,
+      headers: {
+        ...(opts.headers ?? {}),
+        ...buildHeaders(!isFormData),
+      },
     });
-  }
-
-  async put<T = any>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    });
-  }
-
-  async delete<T = any>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
-  }
-
-  setTokens(accessToken: string, refreshToken: string) {
-    this.saveTokens(accessToken, refreshToken);
-  }
-
-  clearAuth() {
-    this.clearTokens();
-  }
-
-  isAuthenticated(): boolean {
-    return !!this.accessToken;
+    
+    // Handle empty responses
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : null;
+    
+    if (!res.ok) return { success: false, error: data?.message ?? res.statusText };
+    return { success: true, data: data as T };
+  } catch (err) {
+    return { success: false, error: (err as Error).message || 'Network error' };
   }
 }
 
-export const api = new ApiClient(API_URL);
+// --- 1. GENERAL API EXPORT ---
+export const api = {
+  get: <T>(url: string) => apiFetch<T>(url, { method: 'GET' }),
+  post: <T>(url: string, data: any) => apiFetch<T>(url, { method: 'POST', body: JSON.stringify(data) }),
+  put: <T>(url: string, data: any) => apiFetch<T>(url, { method: 'PUT', body: JSON.stringify(data) }),
+  patch: <T>(url: string, data: any) => apiFetch<T>(url, { method: 'PATCH', body: JSON.stringify(data) }),
+  delete: <T>(url: string) => apiFetch<T>(url, { method: 'DELETE' }),
+};
 
-// Auth API
+/* --- TYPES --- */
+export type User = {
+  id: string;
+  username: string;
+  email: string;
+  country?: string;
+  role: 'admin' | 'verifier' | 'contributor';
+  points?: number;
+  badges?: string[];
+  joinDate?: string;
+};
+
+export type Settings = {
+  _id?: string;
+  siteName: string;
+  verificationPoints: number;
+  maxSubmissionsPerDay: number;
+  updatedAt?: string;
+};
+
+export type AuditLog = {
+  _id: string;
+  action: string;
+  resource?: string;
+  method?: string;
+  user?: { id?: string; username?: string } | null;
+  details?: any;
+  createdAt: string;
+};
+
+/* --- 2. AUTH API --- */
 export const authApi = {
-  register: (username: string, email: string, password: string, country: string) =>
-    api.post('/auth/register', { username, email, password, country }),
-
-  login: (username: string, password: string) =>
-    api.post('/auth/login', { username, password }),
-
-  logout: () => api.post('/auth/logout'),
-
-  getMe: () => api.get('/auth/me'),
-
-  updateProfile: (email: string, country: string) =>
-    api.put('/auth/profile', { email, country }),
-
-  changePassword: (currentPassword: string, newPassword: string) =>
-    api.put('/auth/password', { currentPassword, newPassword }),
+  login: (credentials: any) => apiFetch<any>('/api/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  register: (data: any) => apiFetch<any>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  logout: () => apiFetch<{success: boolean}>('/api/auth/logout', { method: 'POST' }),
+  getCurrentUser: () => apiFetch<User>('/api/auth/me'),
 };
 
-// Submission API
+/* --- 3. SUBMISSION API --- */
 export const submissionApi = {
-  create: (data: {
-    url: string;
-    title: string;
-    publisher: string;
-    country: string;
-    category: string;
-    wikipediaArticle?: string;
-    fileType?: string;
-    fileName?: string;
-  }) => api.post('/submissions', data),
-
-  getAll: (params?: {
-    country?: string;
-    category?: string;
-    status?: string;
-    search?: string;
-    page?: number;
-    limit?: number;
-  }) => {
-    const query = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) query.append(key, String(value));
-      });
-    }
-    return api.get(`/submissions?${query.toString()}`);
-  },
-
-  getById: (id: string) => api.get(`/submissions/${id}`),
-
-  getMy: (page = 1, limit = 20) =>
-    api.get(`/submissions/my/submissions?page=${page}&limit=${limit}`),
-
-  update: (id: string, data: any) => api.put(`/submissions/${id}`, data),
-
-  delete: (id: string) => api.delete(`/submissions/${id}`),
-
-  verify: (id: string, status: string, credibility?: string, verifierNotes?: string) => {
-    console.log('🔴 API verify call:', { id, status, credibility, verifierNotes });
-    console.log('🔴 API URL being used:', `${API_URL}/submissions/${id}/verify`);
-    const payload = { status, credibility, verifierNotes };
-    console.log('🔴 Payload being sent:', payload);
-    return api.put(`/submissions/${id}/verify`, payload);
-  },
-
-  getPendingForCountry: (page = 1, limit = 20) =>
-    api.get(`/submissions/pending/country?page=${page}&limit=${limit}`),
-
-  getStats: (country?: string) => {
-    const query = country ? `?country=${country}` : '';
-    return api.get(`/submissions/stats${query}`);
-  },
+  getAll: () => apiFetch<any[]>('/api/submissions'),
+  getById: (id: string) => apiFetch<any>(`/api/submissions/${id}`),
+  create: (data: any) => apiFetch<any>('/api/submissions', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: any) => apiFetch<any>(`/api/submissions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => apiFetch<{success: boolean}>(`/api/submissions/${id}`, { method: 'DELETE' }),
 };
 
-// User API
+/* --- 4. PUBLIC USER API --- */
 export const userApi = {
-  getProfile: (id: string) => api.get(`/users/${id}`),
-
-  getLeaderboard: (country?: string, limit = 20) => {
-    const query = new URLSearchParams();
-    if (country) query.append('country', country);
-    query.append('limit', String(limit));
-    return api.get(`/users/leaderboard?${query.toString()}`);
-  },
-
-  getAll: (params?: {
-    role?: string;
-    country?: string;
-    search?: string;
-    page?: number;
-    limit?: number;
-  }) => {
-    const query = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) query.append(key, String(value));
-      });
-    }
-    return api.get(`/users?${query.toString()}`);
-  },
-
-  awardBadge: (id: string, name: string, icon: string) =>
-    api.post(`/users/${id}/badge`, { name, icon }),
-
-  updateRole: (id: string, role: string) =>
-    api.put(`/users/${id}/role`, { role }),
-
-  deactivate: (id: string) => api.put(`/users/${id}/deactivate`),
-
-  activate: (id: string) => api.put(`/users/${id}/activate`),
+  getAll: () => apiFetch<User[]>('/api/users'), 
+  getProfile: (id: string) => apiFetch<User>(`/api/users/${id}`),
+  updateProfile: (data: any) => apiFetch<User>('/api/users/profile', { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
-export default api;
+/* --- 5. HACKATHON LOGIC (Admin/Settings/Audit) --- */
+
+/* Admin - Users */
+export const adminApi = {
+  listUsers: async (): Promise<ApiResult<User[]>> => apiFetch<User[]>('/api/admin/users'),
+  createUser: async (payload: Partial<User>): Promise<ApiResult<User>> =>
+    apiFetch<User>('/api/admin/users', { method: 'POST', body: JSON.stringify(payload) }),
+  updateUser: async (id: string, payload: Partial<User>): Promise<ApiResult<User>> =>
+    apiFetch<User>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteUser: async (id: string): Promise<ApiResult<{ success: boolean }>> =>
+    apiFetch<{ success: boolean }>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+};
+
+/* Settings */
+export const settingsApi = {
+  getSettings: async (): Promise<ApiResult<Settings>> => apiFetch<Settings>('/api/admin/settings'),
+  updateSettings: async (payload: Partial<Settings>): Promise<ApiResult<Settings>> =>
+    apiFetch<Settings>('/api/admin/settings', { method: 'PUT', body: JSON.stringify(payload) }),
+};
+
+/* Audit logs */
+export const auditApi = {
+  listAuditLogs: async (params?: { action?: string; user?: string }): Promise<ApiResult<AuditLog[]>> => {
+    const qs = new URLSearchParams();
+    if (params?.action) qs.set('action', params.action);
+    if (params?.user) qs.set('user', params.user);
+    const path = `/api/admin/audit-logs${qs.toString() ? `?${qs.toString()}` : ''}`;
+    return apiFetch<AuditLog[]>(path);
+  },
+};
+
+export default { api, authApi, submissionApi, userApi, adminApi, settingsApi, auditApi };
