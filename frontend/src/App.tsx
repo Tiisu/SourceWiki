@@ -112,8 +112,7 @@ function AppContent() {
                   © 2025 WikiSourceVerifier. Built for the Wikipedia community.
                 </p>
                 <p className="mt-2">
-                  This is a demonstration platform. For production use, connect
-                  to a real backend service.
+                  This platform is connected to a real backend service.
                 </p>
               </div>
             </div>
