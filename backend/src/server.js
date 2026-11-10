@@ -76,14 +76,6 @@ app.use(cors({
 
 // Body parser
 app.use(express.json());
-app.use((req, res, next) => {
-  console.log('--------------------------------');
-  console.log('DEBUG CHECK:');
-  console.log('Content-Type:', req.get('Content-Type'));
-  console.log('Req Body:', req.body);
-  console.log('--------------------------------');
-  next();
-});
 app.use(express.urlencoded({ extended: true }));
 // Cookie parser (needed before auth middleware)
 app.use(cookieParser());
