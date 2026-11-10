@@ -15,7 +15,8 @@ WikiSourceVerifier helps Wikipedia editors crowdsource and curate credible, coun
 ## 🏗️ Tech Stack
 
 - **Frontend**: React + TypeScript, Vite, Tailwind CSS, shadcn/ui
-- **Backend**: Node.js + Express, MongoDB, JWT Authentication
+- **Backend**: Node.js + Express, MariaDB (via Sequelize), JWT Authentication
+- **Hosting**: [Toolforge](https://wikitech.wikimedia.org/wiki/Help:Toolforge), with data in ToolsDB (MariaDB)
 - **Development**: Hot reload, ESM modules, modern tooling
 
 ## 📋 Prerequisites
@@ -24,7 +25,7 @@ Before setting up the project, ensure you have:
 
 - **Node.js** (v18+ recommended)
 - **npm** (comes with Node.js)
-- **MongoDB** (local installation or MongoDB Atlas account)
+- **MariaDB** (local installation), or use the built-in SQLite mode for quick local runs
 - **Git**
 
 ### Installing Prerequisites
@@ -42,17 +43,22 @@ nvm install 24
 nvm use 24
 ```
 
-#### MongoDB
+#### MariaDB
 ```bash
-# Local installation (macOS with Homebrew)
-brew tap mongodb/brew
-brew install mongodb-community
+# macOS (Homebrew)
+brew install mariadb
+brew services start mariadb
 
-# Start MongoDB service
-brew services start mongodb/brew/mongodb-community
+# Ubuntu / Debian
+sudo apt install mariadb-server
 
-# Or use MongoDB Atlas (cloud): https://www.mongodb.com/cloud/atlas
+# Create the database
+mariadb -u root -e "CREATE DATABASE sourcewiki CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
+
+No MariaDB? Set `DB_DIALECT=sqlite` and `DB_STORAGE=./dev.sqlite` in `backend/.env`
+and the backend stores everything in a local file instead (run `npm install sqlite3` in
+`backend/` first). Tables are created automatically on startup.
 
 ## 🚀 Quick Start
 
@@ -84,8 +90,12 @@ nano .env
 PORT=5000
 NODE_ENV=development
 
-# MongoDB Configuration
-MONGODB_URI=mongodb://localhost:27017/wikisource-verifier
+# Database (MariaDB)
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=sourcewiki
 
 # JWT Configuration  
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
@@ -111,9 +121,10 @@ cp .env.example .env
 nano .env
 ```
 
-**Frontend Environment Variables:**
+**Frontend Environment Variables** (optional):
 ```env
-VITE_API_URL=http://localhost:5000/api
+# Defaults to /api. The Vite dev server forwards /api to http://localhost:5000.
+VITE_API_URL=/api
 ```
 
 ### 4. Start the Application
@@ -161,7 +172,7 @@ wikisource-verifier/
 ├── backend/
 │   ├── src/
 │   │   ├── controllers/     # API route handlers
-│   │   ├── models/         # MongoDB schemas
+│   │   ├── models/         # Sequelize models (MariaDB)
 │   │   ├── routes/         # Express routes
 │   │   ├── middleware/     # Authentication & validation
 │   │   ├── config/         # Database configuration
@@ -181,31 +192,29 @@ wikisource-verifier/
 
 ## 🔧 Configuration
 
-### MongoDB Setup Options
+### Database
 
-#### Option 1: Local MongoDB
-```bash
-# Start local MongoDB
-mongod --dbpath /usr/local/var/mongodb
+The backend uses MariaDB through [Sequelize](https://sequelize.org/). Tables are
+created automatically on startup (`sequelize.sync()`); existing tables are never
+dropped or altered, so schema changes to existing tables need a manual
+`ALTER TABLE`.
 
-# Or with brew services
-brew services start mongodb-community
-```
-
-#### Option 2: MongoDB Atlas (Recommended)
-1. Create account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a new cluster
-3. Get connection string and update `MONGODB_URI` in `.env`
+On Toolforge the database is ToolsDB. See [Deploying to Toolforge](#-deploying-to-toolforge).
 
 ### Environment Variables Explained
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | Backend server port | 5000 |
-| `MONGODB_URI` | MongoDB connection string | Local MongoDB |
+| `DB_HOST` / `DB_PORT` | MariaDB server | 127.0.0.1 / 3306 |
+| `DB_USER` / `DB_PASSWORD` | MariaDB credentials | root / (empty) |
+| `DB_NAME` | Database name | sourcewiki |
+| `DB_DIALECT` | `mariadb` or `sqlite` | mariadb |
 | `JWT_SECRET` | Secret for JWT tokens | Change in production |
 | `FRONTEND_URL` | Frontend URL for CORS | http://localhost:5173 |
-| `VITE_API_URL` | Backend API URL | http://localhost:5000/api |
+| `TRUST_PROXY` | Set to `1` behind a reverse proxy (Toolforge) | unset |
+| `ANON_RATE_LIMIT_MAX` | Requests per 15 min for logged-out visitors | 50 |
+| `VITE_API_URL` | Backend API URL | /api |
 
 ## 🧪 Testing
 
@@ -225,6 +234,48 @@ curl -X POST http://localhost:5000/api/auth/register \
   -d '{"email":"test@example.com","password":"password123","role":"contributor"}'
 ```
 
+## 🚀 Deploying to Toolforge
+
+The app runs on Toolforge as a single web service: Express serves the API under
+`/api` and the built React app for every other path. It is built from the
+GitLab mirror with the Toolforge Build Service (`package.json` and `Procfile` at
+the repo root).
+
+**One-time setup** (on `login.toolforge.org`):
+```bash
+become sourcewiki
+
+# Create the ToolsDB database. Its name must start with the tool's DB user
+# (the "user = s12345" line in ~/replica.my.cnf), e.g. s12345__sourcewiki
+grep user ~/replica.my.cnf
+mariadb --defaults-file=$HOME/replica.my.cnf -h tools.db.svc.wikimedia.cloud
+#   MariaDB> CREATE DATABASE s12345__sourcewiki CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+#   MariaDB> exit
+
+# Secrets and settings (each command prompts for the value)
+toolforge envvars create JWT_SECRET            # long random string
+toolforge envvars create JWT_REFRESH_SECRET    # a different long random string
+toolforge envvars create NODE_ENV              # production
+toolforge envvars create FRONTEND_URL          # https://sourcewiki.toolforge.org
+toolforge envvars create TRUST_PROXY           # 1
+toolforge envvars create ANON_RATE_LIMIT_MAX   # e.g. 2000
+```
+
+ToolsDB credentials come from the `TOOL_TOOLSDB_USER` / `TOOL_TOOLSDB_PASSWORD`
+variables Toolforge provides, and the database name defaults to
+`<user>__sourcewiki`. Check they exist with `toolforge envvars list`; if not, set
+`DB_USER` / `DB_PASSWORD` from `~/replica.my.cnf`.
+
+**Deploy / update:**
+```bash
+toolforge build start https://gitlab.wikimedia.org/toolforge-repos/sourcewiki.git
+toolforge webservice buildservice start --mount=none   # first time
+toolforge webservice restart                           # later deploys
+toolforge webservice logs -f                           # "Database connected successfully"
+```
+
+The site is served at https://sourcewiki.toolforge.org.
+
 ## 🚨 Troubleshooting
 
 ### Common Issues
@@ -237,10 +288,10 @@ lsof -i :5000
 kill -9 <PID>
 ```
 
-#### MongoDB Connection Issues
-- Ensure MongoDB is running: `brew services list | grep mongodb`
-- Check connection string in `.env`
-- Verify network access if using MongoDB Atlas
+#### Database Connection Issues
+- Ensure MariaDB is running: `brew services list | grep mariadb` or `systemctl status mariadb`
+- Check `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` in `.env`
+- Make sure the database exists (see the `CREATE DATABASE` command above)
 
 #### npm Install Failures
 ```bash

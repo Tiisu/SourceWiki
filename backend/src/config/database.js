@@ -1,29 +1,46 @@
-import mongoose from 'mongoose';
+import { Sequelize } from 'sequelize';
 import config from './config.js';
+
+const { db } = config;
+
+export const sequelize = db.dialect === 'sqlite'
+  ? new Sequelize({
+      dialect: 'sqlite',
+      storage: db.storage,
+      logging: db.logging ? console.log : false
+    })
+  : new Sequelize(db.name, db.user, db.password, {
+      dialect: 'mariadb',
+      host: db.host,
+      port: db.port,
+      logging: db.logging ? console.log : false,
+      dialectOptions: {
+        // Read and write DATETIMEs as UTC regardless of the server timezone
+        timezone: 'Etc/GMT0'
+      },
+      define: {
+        charset: 'utf8mb4',
+        collate: 'utf8mb4_unicode_ci'
+      },
+      pool: { max: 5, min: 0, idle: 10000 }
+    });
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(config.mongodbUri);
+    await sequelize.authenticate();
+    // Create any missing tables. Never drops or alters existing ones.
+    await sequelize.sync();
 
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-    
-    // Handle connection events
-    mongoose.connection.on('error', (err) => {
-      console.error('MongoDB connection error:', err);
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB disconnected');
-    });
+    const where = db.dialect === 'sqlite' ? db.storage : `${db.host}/${db.name}`;
+    console.log(`Database connected successfully: ${db.dialect} ${where}`);
 
     process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      console.log('MongoDB connection closed through app termination');
+      await sequelize.close();
+      console.log('Database connection closed through app termination');
       process.exit(0);
     });
-
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error(`Database connection error: ${error.message}`);
     process.exit(1);
   }
 };

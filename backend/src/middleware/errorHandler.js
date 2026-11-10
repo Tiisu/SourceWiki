@@ -26,30 +26,20 @@ const errorHandler = (err, req, res, next) => {
     console.error(JSON.stringify({ ...errorLog, stack: undefined }));
   }
 
-  // Mongoose bad ObjectId
-  if (err.name === 'CastError') {
-    const message = 'Resource not found';
-    error = { 
-      message, 
-      statusCode: 404,
-      errorCode: ErrorCodes.RESOURCE_NOT_FOUND
-    };
-  }
-
-  // Mongoose duplicate key
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
+  // Duplicate value on a unique column (username, email, countryCode)
+  if (err.name === 'SequelizeUniqueConstraintError') {
+    const field = err.errors?.[0]?.path || 'Value';
     const message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
-    error = { 
-      message, 
+    error = {
+      message,
       statusCode: 400,
       errorCode: ErrorCodes.RESOURCE_ALREADY_EXISTS
     };
   }
 
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors).map(val => val.message).join(', ');
+  // Model validation error
+  if (err.name === 'SequelizeValidationError') {
+    const message = err.errors.map(val => val.message).join(', ');
     error = { 
       message, 
       statusCode: 400,

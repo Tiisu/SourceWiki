@@ -276,7 +276,7 @@ describe('Submissions API Integration Tests', () => {
       expect(response.body.success).toBe(true);
 
       // Verify submission is deleted
-      const deletedSubmission = await Submission.findById(submission._id);
+      const deletedSubmission = await Submission.findByPk(submission._id);
       expect(deletedSubmission).toBeNull();
     });
 

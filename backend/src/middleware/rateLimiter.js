@@ -8,7 +8,10 @@ const RATE_LIMITS = {
   // Unauthenticated users (IP-based)
   default: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 50, // 50 requests per 15 minutes
+    // 50 requests per 15 minutes by default. Behind a proxy that hides client
+    // IPs (e.g. Toolforge), every anonymous visitor shares one IP, so raise
+    // this with ANON_RATE_LIMIT_MAX.
+    max: parseInt(process.env.ANON_RATE_LIMIT_MAX, 10) || 50,
   },
   // Contributor role
   contributor: {

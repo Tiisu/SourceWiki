@@ -1,171 +1,144 @@
-
+import { Op, fn, col } from 'sequelize';
 import User from '../models/User.js';
 import Submission from '../models/Submission.js';
 import CountryStats from '../models/CountryStats.js';
+import { countWhen, countBy, dayKey, verificationSpeed } from '../models/queries.js';
 import AppError from '../utils/AppError.js';
 import { ErrorCodes } from '../utils/errorCodes.js';
 
-class ReportsController {
+const DAY_MS = 24 * 60 * 60 * 1000;
 
+const dateRange = (query) => ({
+  startDate: query.startDate ? new Date(query.startDate) : new Date(Date.now() - 30 * DAY_MS),
+  endDate: query.endDate ? new Date(query.endDate) : new Date()
+});
+
+const approvalRate = (approved, total) => (total ? Math.round((approved / total) * 100) : 0);
+
+/** Counts by status for a filter: { total, approved, rejected, pending }. */
+const statusCounts = async (where) => {
+  const rows = await countBy(Submission, 'status', { where, order: false });
+  const byStatus = Object.fromEntries(rows.map(({ _id, count }) => [_id, count]));
+  return {
+    total: rows.reduce((sum, { count }) => sum + count, 0),
+    approved: byStatus.approved || 0,
+    rejected: byStatus.rejected || 0,
+    pending: byStatus.pending || 0
+  };
+};
+
+/** Submissions per day: [{ _id: { date }, count }], oldest first. */
+const timeline = async (where) => {
+  const rows = await Submission.findAll({ where, attributes: ['createdAt'], raw: true });
+  const perDay = new Map();
+  for (const { createdAt } of rows) {
+    const date = dayKey(createdAt);
+    perDay.set(date, (perDay.get(date) || 0) + 1);
+  }
+  return [...perDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ _id: { date }, count }));
+};
+
+class ReportsController {
   // ============================================================================
   // REPORTS GENERATION
   // ============================================================================
 
-
   static async getOverviewReport(req, res, next) {
     try {
-      const startDate = req.query.startDate ? 
-        new Date(req.query.startDate) : 
-        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const endDate = req.query.endDate ? new Date(req.query.endDate) : new Date();
+      const { startDate, endDate } = dateRange(req.query);
       const country = req.query.country;
 
-      // Build filters
-      const submissionFilter = {
-        createdAt: { $gte: startDate, $lte: endDate }
-      };
-      const userFilter = {
-        createdAt: { $gte: startDate, $lte: endDate }
-      };
-
+      const submissionWhere = { createdAt: { [Op.between]: [startDate, endDate] } };
+      const userWhere = { createdAt: { [Op.between]: [startDate, endDate] } };
       if (country) {
-        submissionFilter.country = country;
-        userFilter.country = country;
+        submissionWhere.country = country;
+        userWhere.country = country;
       }
 
-      // Generate report data in parallel
       const [
-        totalSubmissions,
-        approvedSubmissions,
-        rejectedSubmissions,
-        pendingSubmissions,
+        counts,
         newUsers,
-        activeCountriesCount,
+        byCountry,
         submissionsByCategory,
-        topCountries,
-        topContributors,
-        verificationSpeed
+        contributorRows,
+        reviewed
       ] = await Promise.all([
-        Submission.countDocuments(submissionFilter),
-        Submission.countDocuments({ ...submissionFilter, status: 'approved' }),
-        Submission.countDocuments({ ...submissionFilter, status: 'rejected' }),
-        Submission.countDocuments({ ...submissionFilter, status: 'pending' }),
-        User.countDocuments(userFilter),
-        Submission.distinct('country', submissionFilter).then(arr => arr.length),
-        
-        // Submissions by category
-        Submission.aggregate([
-          { $match: submissionFilter },
-          { $group: { _id: '$category', count: { $sum: 1 } } }
-        ]),
-        
-        // Top contributing countries
-        Submission.aggregate([
-          { $match: submissionFilter },
-          { 
-            $group: { 
-              _id: '$country', 
-              submissions: { $sum: 1 }, 
-              approved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } } 
-            } 
-          },
-          { $sort: { submissions: -1 } },
-          { $limit: 10 }
-        ]),
-        
-        // Top contributors
-        Submission.aggregate([
-          { $match: submissionFilter },
-          {
-            $group: {
-              _id: '$submitter',
-              submissions: { $sum: 1 },
-              approved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } }
-            }
-          },
-          { $sort: { submissions: -1 } },
-          { $limit: 10 },
-          {
-            $lookup: {
-              from: 'users',
-              localField: '_id',
-              foreignField: '_id',
-              as: 'user'
-            }
-          },
-          {
-            $project: {
-              username: { $arrayElemAt: ['$user.username', 0] },
-              country: { $arrayElemAt: ['$user.country', 0] },
-              submissions: 1,
-              approved: 1
-            }
-          }
-        ]),
-        
-        // Verification speed analysis
-        Submission.aggregate([
-          {
-            $match: {
-              ...submissionFilter,
-              status: { $in: ['approved', 'rejected'] },
-              verifiedAt: { $exists: true }
-            }
-          },
-          {
-            $project: {
-              country: 1,
-              status: 1,
-              daysToVerify: {
-                $divide: [
-                  { $subtract: ['$verifiedAt', '$createdAt'] },
-                  1000 * 60 * 60 * 24
-                ]
-              }
-            }
-          },
-          {
-            $group: {
-              _id: null,
-              avgDays: { $avg: '$daysToVerify' },
-              minDays: { $min: '$daysToVerify' },
-              maxDays: { $max: '$daysToVerify' },
-              totalProcessed: { $sum: 1 }
-            }
-          }
-        ])
+        statusCounts(submissionWhere),
+        User.count({ where: userWhere }),
+        Submission.findAll({
+          where: submissionWhere,
+          attributes: ['country', [fn('COUNT', col('id')), 'submissions'], countWhen('status', 'approved')],
+          group: ['country'],
+          raw: true
+        }),
+        countBy(Submission, 'category', { where: submissionWhere, order: false }),
+        Submission.findAll({
+          where: submissionWhere,
+          attributes: ['submitter', [fn('COUNT', col('id')), 'submissions'], countWhen('status', 'approved')],
+          group: ['submitter'],
+          raw: true
+        }),
+        Submission.findAll({
+          where: { ...submissionWhere, status: ['approved', 'rejected'], verifiedAt: { [Op.ne]: null } },
+          attributes: ['status', 'createdAt', 'verifiedAt'],
+          raw: true
+        })
       ]);
 
-      const report = {
+      const bySubmissionsDesc = (a, b) => b.submissions - a.submissions;
+
+      const topCountries = byCountry
+        .map((row) => ({ _id: row.country, submissions: Number(row.submissions), approved: Number(row.approved) || 0 }))
+        .sort(bySubmissionsDesc)
+        .slice(0, 10);
+
+      const topContributorStats = contributorRows
+        .map((row) => ({ _id: row.submitter, submissions: Number(row.submissions), approved: Number(row.approved) || 0 }))
+        .sort(bySubmissionsDesc)
+        .slice(0, 10);
+
+      const contributorUsers = topContributorStats.length
+        ? await User.findAll({
+            where: { id: topContributorStats.map((c) => c._id) },
+            attributes: ['id', 'username', 'country']
+          })
+        : [];
+      const usersById = new Map(contributorUsers.map((user) => [String(user.id), user]));
+
+      const topContributors = topContributorStats.map((c) => {
+        const user = usersById.get(String(c._id));
+        return { ...c, username: user?.username, country: user?.country };
+      });
+
+      const speed = verificationSpeed(reviewed);
+
+      res.json({
         period: {
           startDate,
           endDate,
           country: country || 'all'
         },
         summary: {
-          totalSubmissions,
-          approvedSubmissions,
-          rejectedSubmissions,
-          pendingSubmissions,
+          totalSubmissions: counts.total,
+          approvedSubmissions: counts.approved,
+          rejectedSubmissions: counts.rejected,
+          pendingSubmissions: counts.pending,
           newUsers,
-          activeCountries: activeCountriesCount,
-          approvalRate: totalSubmissions ? Math.round((approvedSubmissions / totalSubmissions) * 100) : 0
+          activeCountries: byCountry.length,
+          approvalRate: approvalRate(counts.approved, counts.total)
         },
         breakdown: {
           byCategory: submissionsByCategory,
           byCountry: topCountries,
           topContributors,
-          verificationSpeed: verificationSpeed[0] || {
-            avgDays: 0,
-            minDays: 0,
-            maxDays: 0,
-            totalProcessed: 0
-          }
+          verificationSpeed: speed
+            ? { _id: null, avgDays: speed.avgDays, minDays: speed.minDays, maxDays: speed.maxDays, totalProcessed: speed.total }
+            : { avgDays: 0, minDays: 0, maxDays: 0, totalProcessed: 0 }
         },
         generated: new Date()
-      };
-
-      res.json(report);
+      });
     } catch (error) {
       next(error);
     }
@@ -174,78 +147,31 @@ class ReportsController {
   static async getCountryReport(req, res, next) {
     try {
       const countryCode = req.params.country?.toUpperCase();
-      const startDate = req.query.startDate ? 
-        new Date(req.query.startDate) : 
-        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const endDate = req.query.endDate ? new Date(req.query.endDate) : new Date();
+      const { startDate, endDate } = dateRange(req.query);
 
       if (!countryCode) {
         return next(new AppError('Country code is required', 400, ErrorCodes.INVALID_INPUT));
       }
 
-      const filter = {
+      const where = {
         country: countryCode,
-        createdAt: { $gte: startDate, $lte: endDate }
+        createdAt: { [Op.between]: [startDate, endDate] }
       };
 
-      const [
-        countryStats,
-        totalSubmissions,
-        approvedSubmissions,
-        rejectedSubmissions,
-        pendingSubmissions,
-        contributors,
-        verifiers,
-        categoryBreakdown,
-        timelineData
-      ] = await Promise.all([
-        CountryStats.findOne({ countryCode }),
-        
-        Submission.countDocuments(filter),
-        Submission.countDocuments({ ...filter, status: 'approved' }),
-        Submission.countDocuments({ ...filter, status: 'rejected' }),
-        Submission.countDocuments({ ...filter, status: 'pending' }),
-        
-        // Active contributors
-        User.countDocuments({
-          country: countryCode,
-          role: 'contributor',
-          isActive: true
-        }),
-        
-        // Active verifiers
-        User.countDocuments({
-          country: countryCode,
-          role: 'verifier',
-          isActive: true
-        }),
-        
-        // Category breakdown
-        Submission.aggregate([
-          { $match: filter },
-          { $group: { _id: '$category', count: { $sum: 1 } } }
-        ]),
-        
-        // Timeline data (submissions per day)
-        Submission.aggregate([
-          { $match: filter },
-          {
-            $group: {
-              _id: {
-                date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }
-              },
-              count: { $sum: 1 }
-            }
-          },
-          { $sort: { '_id.date': 1 } }
-        ])
+      const [countryStats, counts, contributors, verifiers, byCategory, timelineData] = await Promise.all([
+        CountryStats.findOne({ where: { countryCode } }),
+        statusCounts(where),
+        User.count({ where: { country: countryCode, role: 'contributor', isActive: true } }),
+        User.count({ where: { country: countryCode, role: 'verifier', isActive: true } }),
+        countBy(Submission, 'category', { where, order: false }),
+        timeline(where)
       ]);
 
       if (!countryStats) {
         return next(new AppError('Country statistics not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
 
-      const report = {
+      res.json({
         country: {
           code: countryCode,
           name: countryStats.countryName
@@ -255,23 +181,21 @@ class ReportsController {
           endDate
         },
         summary: {
-          totalSubmissions,
-          approvedSubmissions,
-          rejectedSubmissions,
-          pendingSubmissions,
+          totalSubmissions: counts.total,
+          approvedSubmissions: counts.approved,
+          rejectedSubmissions: counts.rejected,
+          pendingSubmissions: counts.pending,
           contributors,
           verifiers,
-          approvalRate: totalSubmissions ? Math.round((approvedSubmissions / totalSubmissions) * 100) : 0
+          approvalRate: approvalRate(counts.approved, counts.total)
         },
         breakdown: {
-          byCategory: categoryBreakdown,
+          byCategory,
           timeline: timelineData
         },
         currentStats: countryStats.statistics,
         generated: new Date()
-      };
-
-      res.json(report);
+      });
     } catch (error) {
       next(error);
     }
@@ -279,59 +203,28 @@ class ReportsController {
 
   static async getUserReport(req, res, next) {
     try {
-      const userId = req.params.userId;
-      const startDate = req.query.startDate ? 
-        new Date(req.query.startDate) : 
-        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const endDate = req.query.endDate ? new Date(req.query.endDate) : new Date();
+      const { userId } = req.params;
+      const { startDate, endDate } = dateRange(req.query);
 
-      const user = await User.findById(userId).select('-password');
+      const user = await User.findByPk(userId);
       if (!user) {
         return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
       }
 
-      const filter = {
-        submitter: userId,
-        createdAt: { $gte: startDate, $lte: endDate }
+      const where = {
+        submitter: user.id,
+        createdAt: { [Op.between]: [startDate, endDate] }
       };
 
-      const [
-        totalSubmissions,
-        approvedSubmissions,
-        rejectedSubmissions,
-        pendingSubmissions,
-        categoryBreakdown,
-        timelineData
-      ] = await Promise.all([
-        Submission.countDocuments(filter),
-        Submission.countDocuments({ ...filter, status: 'approved' }),
-        Submission.countDocuments({ ...filter, status: 'rejected' }),
-        Submission.countDocuments({ ...filter, status: 'pending' }),
-        
-        // Category breakdown
-        Submission.aggregate([
-          { $match: filter },
-          { $group: { _id: '$category', count: { $sum: 1 } } }
-        ]),
-        
-        // Timeline data
-        Submission.aggregate([
-          { $match: filter },
-          {
-            $group: {
-              _id: {
-                date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }
-              },
-              count: { $sum: 1 }
-            }
-          },
-          { $sort: { '_id.date': 1 } }
-        ])
+      const [counts, byCategory, timelineData] = await Promise.all([
+        statusCounts(where),
+        countBy(Submission, 'category', { where, order: false }),
+        timeline(where)
       ]);
 
-      const report = {
+      res.json({
         user: {
-          id: user._id,
+          id: user.id,
           username: user.username,
           country: user.country,
           role: user.role,
@@ -344,20 +237,18 @@ class ReportsController {
           endDate
         },
         summary: {
-          totalSubmissions,
-          approvedSubmissions,
-          rejectedSubmissions,
-          pendingSubmissions,
-          approvalRate: totalSubmissions ? Math.round((approvedSubmissions / totalSubmissions) * 100) : 0
+          totalSubmissions: counts.total,
+          approvedSubmissions: counts.approved,
+          rejectedSubmissions: counts.rejected,
+          pendingSubmissions: counts.pending,
+          approvalRate: approvalRate(counts.approved, counts.total)
         },
         breakdown: {
-          byCategory: categoryBreakdown,
+          byCategory,
           timeline: timelineData
         },
         generated: new Date()
-      };
-
-      res.json(report);
+      });
     } catch (error) {
       next(error);
     }

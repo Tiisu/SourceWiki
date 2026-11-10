@@ -1467,8 +1467,8 @@ Admins can award custom badges to users for achievements.
 ## Setup Instructions
 
 ### Prerequisites
-- Node.js (v16+)
-- MongoDB (v5+)
+- Node.js (v24)
+- MariaDB (10.6+)
 
 ### Installation
 
@@ -1488,7 +1488,11 @@ cp .env.example .env
 ```env
 PORT=5000
 NODE_ENV=development
-MONGODB_URI=mongodb://localhost:27017/wikisource-verifier
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=sourcewiki
 JWT_SECRET=your-super-secret-jwt-key
 JWT_REFRESH_SECRET=your-super-secret-refresh-key
 JWT_EXPIRE=15m
@@ -1496,9 +1500,9 @@ JWT_REFRESH_EXPIRE=7d
 FRONTEND_URL=http://localhost:5173
 ```
 
-5. Start MongoDB:
+5. Create the database (tables are created automatically on first start):
 ```bash
-mongod
+mariadb -u root -e "CREATE DATABASE sourcewiki CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
 6. Run the server:

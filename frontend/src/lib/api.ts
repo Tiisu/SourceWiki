@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Same-origin by default: in production the backend serves this app, and in
+// development Vite proxies /api to the backend (see vite.config.ts).
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface ApiResponse<T = any> {
   success: boolean;
