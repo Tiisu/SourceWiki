@@ -114,7 +114,10 @@ User.init({
     attributes: { exclude: ['password'] }
   },
   scopes: {
-    withPassword: { attributes: { include: ['password'] } }
+    // A named scope replaces the default scope, so this selects every column
+    // (including password). Listing password again would select it twice,
+    // which MariaDB rejects.
+    withPassword: {}
   },
   indexes: [
     { fields: ['country'] },
