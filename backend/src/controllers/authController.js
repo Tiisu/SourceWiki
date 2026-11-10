@@ -7,9 +7,7 @@ import { ErrorCodes } from '../utils/errorCodes.js';
 // @route   POST /api/auth/register
 // @access  Public
 export const register = async (req, res, next) => {
-  console.log("RECEIVED BODY:", req.body); 
   try {
-    
     const { username, email, password, country } = req.body;
 
     // Create user
@@ -34,7 +32,7 @@ export const login = async (req, res, next) => {
     const { username, password } = req.body;
 
     // Find user and include password
-    const user = await User.findOne({ username }).select('+password');
+    const user = await User.scope('withPassword').findOne({ where: { username: username ?? null } });
 
     if (!user) {
       return next(new AppError('Invalid credentials', 401, ErrorCodes.INVALID_CREDENTIALS));
@@ -87,7 +85,7 @@ export const logout = async (req, res, next) => {
 // @access  Private
 export const getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findByPk(req.user.id);
 
     res.status(200).json({
       success: true,
@@ -116,7 +114,7 @@ export const refreshToken = async (req, res, next) => {
       return next(new AppError('Invalid refresh token', 401, ErrorCodes.AUTH_TOKEN_INVALID));
     }
 
-    const user = await User.findById(decoded.id);
+    const user = await User.findByPk(decoded.id);
 
     if (!user || !user.isActive) {
       return next(new AppError('User not found or inactive', 401, ErrorCodes.AUTH_TOKEN_INVALID));
@@ -146,11 +144,8 @@ export const updateProfile = async (req, res, next) => {
     if (email) fieldsToUpdate.email = email;
     if (country) fieldsToUpdate.country = country;
 
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      fieldsToUpdate,
-      { new: true, runValidators: true }
-    );
+    const user = await User.findByPk(req.user.id);
+    await user.update(fieldsToUpdate);
 
     res.status(200).json({
       success: true,
@@ -168,7 +163,7 @@ export const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    const user = await User.findById(req.user.id).select('+password');
+    const user = await User.scope('withPassword').findByPk(req.user.id);
 
 
     // Check current password

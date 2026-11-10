@@ -20,9 +20,7 @@ export const createTestUser = async (userData = {}) => {
     ...userData
   };
 
-  const user = new User(defaultUser);
-  await user.save();
-  return user;
+  return User.create(defaultUser);
 };
 
 /**
@@ -71,9 +69,7 @@ export const createTestSubmission = async (submissionData = {}, submitter = null
     ...submissionData
   };
 
-  const submission = new Submission(defaultSubmission);
-  await submission.save();
-  return submission;
+  return Submission.create(defaultSubmission);
 };
 
 /**
@@ -180,9 +176,9 @@ export const seedTestData = async (options = {}) => {
  * @returns {Promise<void>}
  */
 export const cleanupTestData = async () => {
-  await User.deleteMany({});
-  await Submission.deleteMany({});
-  await CountryStats.deleteMany({});
+  await User.destroy({ where: {}, truncate: true });
+  await Submission.destroy({ where: {}, truncate: true });
+  await CountryStats.destroy({ where: {}, truncate: true });
 };
 
 /**

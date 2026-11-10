@@ -10,13 +10,13 @@ WikiSourceVerifier provides a REST API for crowdsourcing and curating credible, 
 
 - **Runtime**: Node.js
 - **Framework**: Express.js
-- **Database**: MongoDB (via Mongoose)
+- **Database**: MariaDB via Sequelize (ToolsDB on Toolforge; SQLite for tests)
 - **Authentication**: JWT (jsonwebtoken + bcryptjs)
 - **Validation**: express-validator
 - **Security**: Helmet, CORS, express-rate-limit, xss, cookie-parser
 - **File Uploads**: Multer
 - **Logging**: Morgan
-- **Testing**: Jest + Supertest + mongodb-memory-server
+- **Testing**: Jest + Supertest (in-memory SQLite by default, MariaDB in CI)
 
 ## Project Structure
 
@@ -26,7 +26,7 @@ backend/
 │   ├── config/          # Database and app configuration
 │   ├── controllers/     # Request handlers
 │   ├── middleware/      # Auth, validation, error handling
-│   ├── models/          # Mongoose schemas (User, Submission, CountryStats)
+│   ├── models/          # Sequelize models (User, Submission, CountryStats)
 │   ├── routes/          # API route definitions
 │   ├── services/        # Business logic
 │   ├── utils/           # Helper functions
@@ -50,7 +50,11 @@ Create a `.env` file in the `backend` directory:
 ```env
 PORT=5000
 NODE_ENV=development
-MONGODB_URI=mongodb://localhost:27017/wikisource-verifier
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=sourcewiki
 JWT_SECRET=your-super-secret-jwt-key
 JWT_REFRESH_SECRET=your-super-secret-refresh-key
 JWT_EXPIRE=15m

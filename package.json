@@ -1,6 +1,13 @@
 {
-  "dependencies": {
-    "dotenv": "^17.2.3",
-    "nodemailer": "^7.0.11"
+  "name": "sourcewiki",
+  "private": true,
+  "description": "WikiSourceVerifier: build and start scripts for running the backend and frontend as one web service (used by Toolforge).",
+  "license": "MIT",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "build": "npm ci --prefix backend --omit=dev && npm ci --prefix frontend --include=dev && npm run build --prefix frontend",
+    "start": "node backend/src/server.js"
   }
 }

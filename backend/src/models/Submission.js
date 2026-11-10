@@ -1,111 +1,178 @@
-import mongoose from 'mongoose';
+import { DataTypes, Model } from 'sequelize';
+import { sequelize } from '../config/database.js';
+import User from './User.js';
+import { idField, jsonField, timestampFields, withIds } from './helpers.js';
 
-const submissionSchema = new mongoose.Schema({
+const trimmed = (field) => ({
+  set(value) {
+    this.setDataValue(field, typeof value === 'string' ? value.trim() : value);
+  }
+});
+
+class Submission extends Model {
+  // Mongo-style alias used throughout the codebase
+  get _id() {
+    return this.id;
+  }
+
+  /**
+   * Same shape the Mongoose API returned: `submitter` / `verifier` are the
+   * user object when loaded via `include`, otherwise the raw user id.
+   */
+  toJSON() {
+    const values = { ...this.get() };
+    const { submitterUser, verifierUser } = values;
+    delete values.submitterUser;
+    delete values.verifierUser;
+
+    if (submitterUser) values.submitter = submitterUser.toJSON();
+    if (verifierUser) values.verifier = verifierUser.toJSON();
+
+    return withIds(values);
+  }
+}
+
+Submission.init({
+  ...idField,
   url: {
-    type: String,
-    required: [true, 'URL is required'],
-    trim: true
+    type: DataTypes.STRING(2048),
+    allowNull: false,
+    ...trimmed('url'),
+    validate: {
+      notNull: { msg: 'URL is required' },
+      notEmpty: { msg: 'URL is required' }
+    }
   },
   title: {
-    type: String,
-    required: [true, 'Title is required'],
-    trim: true,
-    maxlength: [200, 'Title cannot exceed 200 characters']
+    type: DataTypes.STRING(200),
+    allowNull: false,
+    ...trimmed('title'),
+    validate: {
+      notNull: { msg: 'Title is required' },
+      notEmpty: { msg: 'Title is required' },
+      len: { args: [0, 200], msg: 'Title cannot exceed 200 characters' }
+    }
   },
   publisher: {
-    type: String,
-    required: [true, 'Publisher is required'],
-    trim: true,
-    maxlength: [100, 'Publisher cannot exceed 100 characters']
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    ...trimmed('publisher'),
+    validate: {
+      notNull: { msg: 'Publisher is required' },
+      notEmpty: { msg: 'Publisher is required' },
+      len: { args: [0, 100], msg: 'Publisher cannot exceed 100 characters' }
+    }
   },
   country: {
-    type: String,
-    required: [true, 'Country is required']
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    validate: {
+      notNull: { msg: 'Country is required' },
+      notEmpty: { msg: 'Country is required' }
+    }
   },
   category: {
-    type: String,
-    enum: ['primary', 'secondary', 'unreliable'],
-    required: [true, 'Category is required']
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    validate: {
+      notNull: { msg: 'Category is required' },
+      isIn: { args: [['primary', 'secondary', 'unreliable']], msg: 'Invalid category' }
+    }
   },
   status: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending'
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: 'pending',
+    validate: {
+      isIn: { args: [['pending', 'approved', 'rejected']], msg: 'Invalid status' }
+    }
   },
   submittedDate: {
-    type: Date,
-    default: Date.now()
+    type: DataTypes.DATE(3),
+    defaultValue: DataTypes.NOW
   },
   credibility: {
-    type: String,
-    enum: ['credible', 'unreliable'],
-    required: function() {
-      return this.status === 'approved';
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    validate: {
+      isIn: { args: [['credible', 'unreliable']], msg: 'Invalid credibility' }
     }
   },
   submitter: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    type: DataTypes.UUID,
+    allowNull: false,
+    validate: {
+      notNull: { msg: 'Submitter is required' }
+    }
   },
   verifier: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    type: DataTypes.UUID,
+    allowNull: true
   },
   wikipediaArticle: {
-    type: String,
-    trim: true
+    type: DataTypes.STRING(2048),
+    allowNull: true,
+    ...trimmed('wikipediaArticle')
   },
   verifierNotes: {
-    type: String,
-    trim: true,
-    maxlength: [500, 'Notes cannot exceed 500 characters']
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    ...trimmed('verifierNotes'),
+    validate: {
+      len: { args: [0, 500], msg: 'Notes cannot exceed 500 characters' }
+    }
   },
   verifiedAt: {
-    type: Date
+    type: DataTypes.DATE(3),
+    allowNull: true
   },
   fileType: {
-    type: String,
-    enum: ['url', 'pdf'],
-    default: 'url'
+    type: DataTypes.STRING(10),
+    allowNull: false,
+    defaultValue: 'url',
+    validate: {
+      isIn: { args: [['url', 'pdf']], msg: 'Invalid file type' }
+    }
   },
   fileName: {
-    type: String
+    type: DataTypes.STRING(255),
+    allowNull: true
   },
-  tags: [{
-    type: String,
-    trim: true
-  }]
+  tags: jsonField('tags', []),
+  ...timestampFields
 }, {
-  timestamps: true
+  sequelize,
+  modelName: 'Submission',
+  tableName: 'submissions',
+  validate: {
+    credibilityRequiredWhenApproved() {
+      if (this.status === 'approved' && !this.credibility) {
+        throw new Error('Credibility rating is required for approved submissions');
+      }
+    }
+  },
+  indexes: [
+    { fields: ['country', 'status'] },
+    { fields: ['submitter'] },
+    { fields: ['category'] },
+    { fields: ['createdAt'] }
+  ]
 });
 
-// Indexes for better query performance
-submissionSchema.index({ country: 1, status: 1 });
-submissionSchema.index({ submitter: 1 });
-submissionSchema.index({ category: 1 });
-submissionSchema.index({ createdAt: -1 });
+Submission.belongsTo(User, { as: 'submitterUser', foreignKey: 'submitter', constraints: false });
+Submission.belongsTo(User, { as: 'verifierUser', foreignKey: 'verifier', constraints: false });
 
-// Virtual for submitter details
-submissionSchema.virtual('submitterDetails', {
-  ref: 'User',
-  localField: 'submitter',
-  foreignField: '_id',
-  justOne: true
+/** `include` entries equivalent to Mongoose `.populate('submitter', 'a b c')`. */
+export const includeSubmitter = (fields) => ({
+  model: User,
+  as: 'submitterUser',
+  attributes: ['id', ...fields]
 });
 
-// Virtual for verifier details
-submissionSchema.virtual('verifierDetails', {
-  ref: 'User',
-  localField: 'verifier',
-  foreignField: '_id',
-  justOne: true
+export const includeVerifier = (fields) => ({
+  model: User,
+  as: 'verifierUser',
+  attributes: ['id', ...fields]
 });
-
-// Ensure virtuals are included in JSON
-submissionSchema.set('toJSON', { virtuals: true });
-submissionSchema.set('toObject', { virtuals: true });
-
-const Submission = mongoose.model('Submission', submissionSchema);
 
 export default Submission;
