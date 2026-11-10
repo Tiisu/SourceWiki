@@ -14,10 +14,8 @@ export const sequelize = db.dialect === 'sqlite'
       host: db.host,
       port: db.port,
       logging: db.logging ? console.log : false,
-      dialectOptions: {
-        // Read and write DATETIMEs as UTC regardless of the server timezone
-        timezone: 'Etc/GMT0'
-      },
+      // Read and write DATETIMEs as UTC regardless of the server timezone
+      timezone: '+00:00',
       define: {
         charset: 'utf8mb4',
         collate: 'utf8mb4_unicode_ci'
