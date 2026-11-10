@@ -7,6 +7,10 @@ let useMemoryServer = true;
 // Setup before all tests
 beforeAll(async () => {
   try {
+    // Set test-only JWT secrets so tests relying on auth don't fail
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
+    process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'test-refresh-secret';
+    
     let mongoUri;
     
     // Check if a test MongoDB URI is provided (for CI/CD or when VC++ redistributable is not available)
