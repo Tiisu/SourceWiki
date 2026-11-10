@@ -20,9 +20,20 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: [
+      function() { return !this.wikimedia_id; },
+      'Password is required'
+    ],
     minlength: [6, 'Password must be at least 6 characters'],
     select: false
+  },
+  wikimedia_id: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  wikimedia_username: {
+    type: String
   },
   country: {
     type: String,
@@ -63,7 +74,7 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return next();
   }
   

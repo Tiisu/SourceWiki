@@ -9,12 +9,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useAuth } from '../lib/auth-context';
 import { COUNTRIES } from '../lib/mock-data';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Globe } from 'lucide-react';
+import { useEffect } from 'react';
 
 export const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, register } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Check for errors from OAuth redirect
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error) {
+      toast.error(error);
+    }
+  }, []);
+
+  const handleWikimediaLogin = () => {
+    window.location.href = import.meta.env.VITE_API_URL 
+      ? `${import.meta.env.VITE_API_URL}/auth/wikimedia` 
+      : 'http://localhost:5000/api/auth/wikimedia';
+  };
 
   // Login form state
   const [loginUsername, setLoginUsername] = useState('');
@@ -70,6 +86,25 @@ export const AuthPage: React.FC = () => {
         <div className="text-center mb-8">
           <h1 className="mb-2">Welcome to WikiSourceVerifier</h1>
           <p className="text-gray-600">Sign in or create an account to get started</p>
+        </div>
+
+        <div className="mb-6">
+          <Button 
+            onClick={handleWikimediaLogin} 
+            className="w-full !bg-blue-600 hover:!bg-blue-700 text-white flex items-center justify-center gap-2 border-none"
+          >
+            <Globe className="w-5 h-5" />
+            Sign in with Wikimedia
+          </Button>
+          
+          <div className="relative mt-6 mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-gray-50 px-2 text-gray-500">Or continue with</span>
+            </div>
+          </div>
         </div>
 
         <Tabs defaultValue="login" className="w-full">
