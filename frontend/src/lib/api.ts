@@ -2,11 +2,138 @@
 // development Vite proxies /api to the backend (see vite.config.ts).
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
   errors?: Array<{ field: string; message: string }>;
+}
+
+export interface UserBadge {
+  name: string;
+  icon: string;
+  earnedAt?: string;
+}
+
+export interface UserData {
+  id: string;
+  username: string;
+  email: string;
+  country: string;
+  role: 'contributor' | 'verifier' | 'admin';
+  points: number;
+  badges: UserBadge[];
+  joinDate: string;
+  isActive: boolean;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message?: string;
+  accessToken: string;
+  refreshToken: string;
+  user: UserData;
+}
+
+export interface UserProfileResponse {
+  success: boolean;
+  message?: string;
+  user: UserData;
+}
+
+export interface SubmissionData {
+  id: string;
+  url: string;
+  title: string;
+  publisher: string;
+  country: string;
+  category: string;
+  wikipediaArticle?: string;
+  fileType?: string;
+  fileName?: string;
+  status: 'pending' | 'verified' | 'rejected' | string;
+  credibility?: 'primary' | 'secondary' | 'unreliable' | string;
+  verifierNotes?: string;
+  submittedBy?: string;
+  verifiedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSubmissionPayload {
+  url: string;
+  title: string;
+  publisher: string;
+  country: string;
+  category: string;
+  wikipediaArticle?: string;
+  fileType?: string;
+  fileName?: string;
+}
+
+export interface UpdateSubmissionPayload {
+  url?: string;
+  title?: string;
+  publisher?: string;
+  country?: string;
+  category?: string;
+  wikipediaArticle?: string;
+  fileType?: string;
+  fileName?: string;
+  status?: string;
+  credibility?: string;
+  verifierNotes?: string;
+}
+
+export interface SubmissionsResponse {
+  success: boolean;
+  data?: SubmissionData[];
+  submissions?: SubmissionData[];
+  total?: number;
+  page?: number;
+  totalPages?: number;
+  message?: string;
+}
+
+export interface SubmissionResponse {
+  success: boolean;
+  data?: SubmissionData;
+  submission?: SubmissionData;
+  message?: string;
+}
+
+export interface StatsResponse {
+  success: boolean;
+  stats?: Record<string, number>;
+  totalSubmissions?: number;
+  verifiedSubmissions?: number;
+  rejectedSubmissions?: number;
+  pendingSubmissions?: number;
+  message?: string;
+}
+
+export interface LeaderboardUser {
+  id: string;
+  username: string;
+  country: string;
+  points: number;
+  badges: UserBadge[];
+}
+
+export interface LeaderboardResponse {
+  success: boolean;
+  leaderboard?: LeaderboardUser[];
+  data?: LeaderboardUser[];
+  message?: string;
+}
+
+export interface UsersResponse {
+  success: boolean;
+  users?: UserData[];
+  total?: number;
+  page?: number;
+  totalPages?: number;
+  message?: string;
 }
 
 class ApiClient {
@@ -64,7 +191,7 @@ class ApiClient {
     }
   }
 
-  async request<T = any>(
+  async request<T = unknown>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
@@ -103,7 +230,7 @@ class ApiClient {
       const contentType = response.headers.get('content-type');
       const isJson = contentType && contentType.includes('application/json');
       
-      let data;
+      let data: { message?: string; [key: string]: unknown };
       if (isJson) {
         try {
           data = await response.json();
@@ -123,7 +250,7 @@ class ApiClient {
         throw new Error(data.message || `Request failed with status ${response.status}`);
       }
 
-      return data;
+      return data as T;
     } catch (error) {
       if (error instanceof Error) {
         // Check for network errors
@@ -136,25 +263,25 @@ class ApiClient {
     }
   }
 
-  async get<T = any>(endpoint: string): Promise<T> {
+  async get<T = unknown>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  async post<T = any>(endpoint: string, data?: any): Promise<T> {
+  async post<T = unknown>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T = any>(endpoint: string, data?: any): Promise<T> {
+  async put<T = unknown>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async delete<T = any>(endpoint: string): Promise<T> {
+  async delete<T = unknown>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
@@ -176,34 +303,26 @@ export const api = new ApiClient(API_URL);
 // Auth API
 export const authApi = {
   register: (username: string, email: string, password: string, country: string) =>
-    api.post('/auth/register', { username, email, password, country }),
+    api.post<AuthResponse>('/auth/register', { username, email, password, country }),
 
   login: (username: string, password: string) =>
-    api.post('/auth/login', { username, password }),
+    api.post<AuthResponse>('/auth/login', { username, password }),
 
-  logout: () => api.post('/auth/logout'),
+  logout: () => api.post<ApiResponse>('/auth/logout'),
 
-  getMe: () => api.get('/auth/me'),
+  getMe: () => api.get<UserProfileResponse>('/auth/me'),
 
   updateProfile: (email: string, country: string) =>
-    api.put('/auth/profile', { email, country }),
+    api.put<UserProfileResponse>('/auth/profile', { email, country }),
 
   changePassword: (currentPassword: string, newPassword: string) =>
-    api.put('/auth/password', { currentPassword, newPassword }),
+    api.put<ApiResponse>('/auth/password', { currentPassword, newPassword }),
 };
 
 // Submission API
 export const submissionApi = {
-  create: (data: {
-    url: string;
-    title: string;
-    publisher: string;
-    country: string;
-    category: string;
-    wikipediaArticle?: string;
-    fileType?: string;
-    fileName?: string;
-  }) => api.post('/submissions', data),
+  create: (data: CreateSubmissionPayload) =>
+    api.post<SubmissionResponse>('/submissions', data),
 
   getAll: (params?: {
     country?: string;
@@ -219,41 +338,42 @@ export const submissionApi = {
         if (value !== undefined) query.append(key, String(value));
       });
     }
-    return api.get(`/submissions?${query.toString()}`);
+    return api.get<SubmissionsResponse>(`/submissions?${query.toString()}`);
   },
 
-  getById: (id: string) => api.get(`/submissions/${id}`),
+  getById: (id: string) => api.get<SubmissionResponse>(`/submissions/${id}`),
 
   getMy: (page = 1, limit = 20) =>
-    api.get(`/submissions/my/submissions?page=${page}&limit=${limit}`),
+    api.get<SubmissionsResponse>(`/submissions/my/submissions?page=${page}&limit=${limit}`),
 
-  update: (id: string, data: any) => api.put(`/submissions/${id}`, data),
+  update: (id: string, data: UpdateSubmissionPayload) =>
+    api.put<SubmissionResponse>(`/submissions/${id}`, data),
 
-  delete: (id: string) => api.delete(`/submissions/${id}`),
+  delete: (id: string) => api.delete<ApiResponse>(`/submissions/${id}`),
 
   verify: (id: string, status: string, credibility?: string, verifierNotes?: string) => {
     const payload = { status, credibility, verifierNotes };
-    return api.put(`/submissions/${id}/verify`, payload);
+    return api.put<SubmissionResponse>(`/submissions/${id}/verify`, payload);
   },
 
   getPendingForCountry: (page = 1, limit = 20) =>
-    api.get(`/submissions/pending/country?page=${page}&limit=${limit}`),
+    api.get<SubmissionsResponse>(`/submissions/pending/country?page=${page}&limit=${limit}`),
 
   getStats: (country?: string) => {
     const query = country ? `?country=${country}` : '';
-    return api.get(`/submissions/stats${query}`);
+    return api.get<StatsResponse>(`/submissions/stats${query}`);
   },
 };
 
 // User API
 export const userApi = {
-  getProfile: (id: string) => api.get(`/users/${id}`),
+  getProfile: (id: string) => api.get<UserProfileResponse>(`/users/${id}`),
 
   getLeaderboard: (country?: string, limit = 20) => {
     const query = new URLSearchParams();
     if (country) query.append('country', country);
     query.append('limit', String(limit));
-    return api.get(`/users/leaderboard?${query.toString()}`);
+    return api.get<LeaderboardResponse>(`/users/leaderboard?${query.toString()}`);
   },
 
   getAll: (params?: {
@@ -269,18 +389,18 @@ export const userApi = {
         if (value !== undefined) query.append(key, String(value));
       });
     }
-    return api.get(`/users?${query.toString()}`);
+    return api.get<UsersResponse>(`/users?${query.toString()}`);
   },
 
   awardBadge: (id: string, name: string, icon: string) =>
-    api.post(`/users/${id}/badge`, { name, icon }),
+    api.post<ApiResponse>(`/users/${id}/badge`, { name, icon }),
 
   updateRole: (id: string, role: string) =>
-    api.put(`/users/${id}/role`, { role }),
+    api.put<ApiResponse>(`/users/${id}/role`, { role }),
 
-  deactivate: (id: string) => api.put(`/users/${id}/deactivate`),
+  deactivate: (id: string) => api.put<ApiResponse>(`/users/${id}/deactivate`),
 
-  activate: (id: string) => api.put(`/users/${id}/activate`),
+  activate: (id: string) => api.put<ApiResponse>(`/users/${id}/activate`),
 };
 
 export default api;
