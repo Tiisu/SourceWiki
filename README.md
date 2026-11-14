@@ -23,7 +23,7 @@ WikiSourceVerifier helps Wikipedia editors crowdsource and curate credible, coun
 
 Before setting up the project, ensure you have:
 
-- **Node.js** (v18+ recommended)
+- **Node.js** (v24 recommended, pinned via `.nvmrc`)
 - **npm** (comes with Node.js)
 - **MariaDB** (local installation), or use the built-in SQLite mode for quick local runs
 - **Git**
@@ -40,7 +40,7 @@ node --version
 # Or use a version manager like nvm:
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 nvm install 24
-nvm use 24
+nvm use
 ```
 
 #### MariaDB
@@ -66,6 +66,7 @@ and the backend stores everything in a local file instead (run `npm install sqli
 ```bash
 git clone <repository-url>
 cd wikisource-verifier
+nvm use
 ```
 
 ### 2. Backend Setup
