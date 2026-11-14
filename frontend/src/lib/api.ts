@@ -1,10 +1,69 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-interface ApiResponse<T = any> {
+interface ApiUser {
+  id: string;
+  username: string;
+  email: string;
+  country: string;
+  role: 'contributor' | 'verifier' | 'admin';
+  points: number;
+  badges: Array<{ name: string; icon: string; earnedAt: string }>;
+  joinDate: string;
+  isActive: boolean;
+}
+
+interface ApiContributor {
+  username: string;
+  country: string;
+}
+
+interface ApiSubmission {
+  id: string;
+  url: string;
+  title: string;
+  publisher: string;
+  country: string;
+  category: string;
+  status: string;
+  submitter?: ApiContributor | string;
+  verifier?: ApiContributor | string;
+  wikipediaArticle?: string;
+  verifierNotes?: string;
+  verifiedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SubmissionUpdate {
+  url?: string;
+  title?: string;
+  publisher?: string;
+  country?: string;
+  category?: string;
+  wikipediaArticle?: string;
+  fileType?: string;
+  fileName?: string;
+}
+
+interface ApiResponseData {
+  submissions?: ApiSubmission[];
+}
+
+interface ApiResponse<TData = ApiResponseData> {
   success: boolean;
-  data?: T;
+  data?: TData;
   message?: string;
   errors?: Array<{ field: string; message: string }>;
+  user?: ApiUser;
+  accessToken?: string;
+  refreshToken?: string;
+  submissions?: ApiSubmission[];
+  submission?: ApiSubmission;
+  pages?: number;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 class ApiClient {
@@ -49,9 +108,14 @@ class ApiClient {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        this.saveTokens(data.accessToken, this.refreshToken!);
-        return true;
+        const data: unknown = await response.json();
+        if (isRecord(data) && typeof data.accessToken === 'string') {
+          this.saveTokens(data.accessToken, this.refreshToken);
+          return true;
+        }
+
+        this.clearTokens();
+        return false;
       }
       
       this.clearTokens();
@@ -62,18 +126,18 @@ class ApiClient {
     }
   }
 
-  async request<T = any>(
+  async request<T = ApiResponse>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    };
+    const headers = new Headers(options.headers);
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
 
     if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
+      headers.set('Authorization', `Bearer ${this.accessToken}`);
     }
 
     try {
@@ -88,7 +152,7 @@ class ApiClient {
         const refreshed = await this.refreshAccessToken();
         if (refreshed) {
           // Retry the request with new token
-          headers['Authorization'] = `Bearer ${this.accessToken}`;
+          headers.set('Authorization', `Bearer ${this.accessToken}`);
           response = await fetch(url, {
             ...options,
             headers,
@@ -97,13 +161,16 @@ class ApiClient {
         }
       }
 
-      const data = await response.json();
+      const data: unknown = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'An error occurred');
+        const message = isRecord(data) && typeof data.message === 'string'
+          ? data.message
+          : 'An error occurred';
+        throw new Error(message);
       }
 
-      return data;
+      return data as T;
     } catch (error) {
       if (error instanceof Error) {
         throw error;
@@ -112,25 +179,25 @@ class ApiClient {
     }
   }
 
-  async get<T = any>(endpoint: string): Promise<T> {
+  async get<T = ApiResponse>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  async post<T = any>(endpoint: string, data?: any): Promise<T> {
+  async post<T = ApiResponse>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T = any>(endpoint: string, data?: any): Promise<T> {
+  async put<T = ApiResponse>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async delete<T = any>(endpoint: string): Promise<T> {
+  async delete<T = ApiResponse>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
@@ -203,7 +270,7 @@ export const submissionApi = {
   getMy: (page = 1, limit = 20) =>
     api.get(`/submissions/my/submissions?page=${page}&limit=${limit}`),
 
-  update: (id: string, data: any) => api.put(`/submissions/${id}`, data),
+  update: (id: string, data: SubmissionUpdate) => api.put(`/submissions/${id}`, data),
 
   delete: (id: string) => api.delete(`/submissions/${id}`),
 
