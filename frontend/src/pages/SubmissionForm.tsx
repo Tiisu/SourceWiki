@@ -88,34 +88,37 @@ export const SubmissionForm: React.FC = () => {
         url: submissionType === 'url' ? url : `https://uploads.wikisource.org/${fileName}`,
         title,
         publisher,
-        country,
+        country: COUNTRIES.find((c) => c.code === country)?.name || country,
         category,
         wikipediaArticle: wikipediaArticle || undefined,
         fileType: submissionType,
         fileName: submissionType === 'pdf' ? fileName : undefined,
       });
 
-      if (response.success) {
-        toast.success('Reference submitted successfully! (+10 points)');
-        
-        // Update user points locally
-        updateUser({ points: user.points + 10 });
-      }
+if (response.success) {
+  toast.success('Reference submitted successfully! (+10 points)');
 
-      // Reset form
-      setUrl('');
-      setTitle('');
-      setPublisher('');
-      setCountry('');
-      setCategory('secondary');
-      setWikipediaArticle('');
-      setFileName('');
+  updateUser({ points: user.points + 10 });
 
-      // Navigate to directory
-      setTimeout(() => navigate('/directory'), 1500);
-    } catch (error) {
-      toast.error('Submission failed. Please try again.');
-    } finally {
+  setUrl('');
+  setTitle('');
+  setPublisher('');
+  setCountry('');
+  setCategory('secondary');
+  setWikipediaArticle('');
+  setFileName('');
+
+  setTimeout(() => navigate('/directory'), 1500);
+} else {
+  toast.error(response.message || 'Submission failed. Please try again.');
+}
+} catch (error) {
+  toast.error(
+    error instanceof Error
+      ? error.message
+      : 'Submission failed. Please try again.'
+  );
+} finally {
       setLoading(false);
     }
   };
