@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -22,6 +23,7 @@ import {
 } from '../lib/mock-data';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 interface Submission {
   id: string;
@@ -47,9 +49,14 @@ interface Submission {
 import { Search, Filter, ExternalLink, Calendar, Globe, BookOpen } from 'lucide-react';
 
 export const PublicDirectory: React.FC = () => {
+  const { country: countryParam } = useParams<{ country: string }>();
+  const countryCode = countryParam?.toUpperCase();
+  const countryName = countryCode ? getCountryName(countryCode) : undefined;
+  useDocumentTitle(countryName ? `Sources in ${countryName}` : 'Source directory');
+
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterCountry, setFilterCountry] = useState<string>('all');
+  const [filterCountry, setFilterCountry] = useState<string>(countryCode || 'all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('approved');
   const [filterReliability, setFilterReliability] = useState<string>('all');
@@ -59,6 +66,11 @@ export const PublicDirectory: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    setFilterCountry(countryCode || 'all');
+    setPage(1);
+  }, [countryCode]);
 
   useEffect(() => {
     loadSubmissions();

@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './lib/auth-context';
 import { Navigation } from './components/Navigation';
-import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile } from './pages';
+import { LandingPage, AuthPage, SubmissionForm, AdminDashboard, PublicDirectory, UserProfile, NotFoundPage } from './pages';
 import { Toaster } from './components/ui/sonner';
 import { initializeData } from './lib/mock-data';
 
@@ -23,8 +23,9 @@ function AppContent() {
             <Route path="/submit" element={<SubmissionForm />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/directory" element={<PublicDirectory />} />
+            <Route path="/country/:country" element={<PublicDirectory />} />
             <Route path="/profile" element={<UserProfile />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
         <Toaster position="top-right" />
