@@ -30,6 +30,7 @@ import {
 } from '../lib/mock-data';
 import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 interface Submission {
   id: string;
@@ -50,6 +51,7 @@ interface Submission {
 import { CheckCircle, XCircle, Eye, Clock, TrendingUp, Users, FileCheck } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
+  useDocumentTitle('Admin');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [submissions, setSubmissions] = useState<Submission[]>([]);

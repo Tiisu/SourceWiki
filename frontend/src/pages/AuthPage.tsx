@@ -10,8 +10,10 @@ import { useAuth } from '../lib/auth-context';
 import { COUNTRIES } from '../lib/mock-data';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export const AuthPage: React.FC = () => {
+  useDocumentTitle('Sign in');
   const navigate = useNavigate();
   const { login, register } = useAuth();
   const [loading, setLoading] = useState(false);

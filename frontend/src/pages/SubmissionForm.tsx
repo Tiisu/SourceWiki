@@ -13,8 +13,10 @@ import { submissionApi } from '../lib/api';
 import { toast } from 'sonner';
 import { Upload, Link2, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '../components/ui/alert';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export const SubmissionForm: React.FC = () => {
+  useDocumentTitle('Submit a source');
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [submissionType, setSubmissionType] = useState<'url' | 'pdf'>('url');

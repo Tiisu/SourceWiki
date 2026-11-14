@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:unit",
+    "test:unit": "node --test tests/unit/*.test.js"
   },
   "keywords": ["wikipedia", "verification", "api", "express", "mongodb"],
   "author": "",

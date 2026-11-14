@@ -5,8 +5,10 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { useAuth } from '../lib/auth-context';
 import { submissionApi, userApi } from '../lib/api';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export const LandingPage: React.FC = () => {
+  useDocumentTitle('Home');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0 });

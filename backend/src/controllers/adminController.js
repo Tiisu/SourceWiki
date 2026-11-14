@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import Submission from '../models/Submission.js';
 import CountryStats from '../models/CountryStats.js';
+import { getPagination } from '../utils/pagination.js';
 
 class AdminController {
   // ============================================================================
@@ -152,9 +153,7 @@ class AdminController {
 
   static async getUsers(req, res) {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 20;
-      const skip = (page - 1) * limit;
+      const { page, limit, skip } = getPagination(req.query.page, req.query.limit);
       
       // Build filter
       const filter = {};
@@ -322,9 +321,7 @@ class AdminController {
 
   static async getSubmissions(req, res) {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 20;
-      const skip = (page - 1) * limit;
+      const { page, limit, skip } = getPagination(req.query.page, req.query.limit);
       
       // Build filter
       const filter = {};

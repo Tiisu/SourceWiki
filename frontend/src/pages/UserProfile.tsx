@@ -15,8 +15,10 @@ import {
   getStatusColor,
 } from '../lib/mock-data';
 import { Award, TrendingUp, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export const UserProfile: React.FC = () => {
+  useDocumentTitle('Profile');
   const navigate = useNavigate();
   const { user } = useAuth();
 
