@@ -120,7 +120,9 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        throw new Error(data.message || `Request failed with status ${response.status}`);
+        const validationMessage = data.errors?.map((error: { field: string; message: string }) => error.message).join(', ');
+
+throw new Error(validationMessage || data.message || `Request failed with status ${response.status}`);;
       }
 
       return data;
