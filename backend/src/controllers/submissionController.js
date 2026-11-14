@@ -1,5 +1,6 @@
 import Submission from '../models/Submission.js';
 import User from '../models/User.js';
+import { getPagination } from '../utils/pagination.js';
 
 // @desc    Create new submission
 // @route   POST /api/submissions
@@ -42,7 +43,8 @@ export const createSubmission = async (req, res, next) => {
 // @access  Public
 export const getSubmissions = async (req, res, next) => {
   try {
-    const { country, category, status, page = 1, limit = 20, search } = req.query;
+    const { country, category, status, search } = req.query;
+    const { page, limit, skip } = getPagination(req.query.page, req.query.limit);
 
     const query = {};
 
@@ -56,14 +58,12 @@ export const getSubmissions = async (req, res, next) => {
       ];
     }
 
-    const skip = (page - 1) * limit;
-
     const submissions = await Submission.find(query)
       .populate('submitter', 'username country')
       .populate('verifier', 'username country')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(limit);
 
     const total = await Submission.countDocuments(query);
 
@@ -110,14 +110,13 @@ export const getSubmission = async (req, res, next) => {
 // @access  Private
 export const getMySubmissions = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = getPagination(req.query.page, req.query.limit);
 
     const submissions = await Submission.find({ submitter: req.user.id })
       .populate('verifier', 'username country')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(limit);
 
     const total = await Submission.countDocuments({ submitter: req.user.id });
 
@@ -296,8 +295,7 @@ export const verifySubmission = async (req, res, next) => {
 // @access  Private (verifier, admin)
 export const getPendingSubmissionsForCountry = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = getPagination(req.query.page, req.query.limit);
 
     // Build query based on user role
     let query = { status: 'pending' };
@@ -312,7 +310,7 @@ export const getPendingSubmissionsForCountry = async (req, res, next) => {
       .populate('submitter', 'username country')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(limit);
 
     const total = await Submission.countDocuments(query);
 
