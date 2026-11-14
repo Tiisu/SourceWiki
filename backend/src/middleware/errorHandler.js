@@ -25,6 +25,7 @@ const errorHandler = (err, req, res, next) => {
     const message = Object.values(err.errors).map(val => val.message).join(', ');
     error = { message, statusCode: 400 };
   }
+  
 
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
