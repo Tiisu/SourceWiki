@@ -20,12 +20,13 @@ const errorHandler = (err, req, res, next) => {
     error = { message, statusCode: 400 };
   }
 
+
   // Mongoose validation error
   if (err.name === 'ValidationError') {
     const message = Object.values(err.errors).map(val => val.message).join(', ');
     error = { message, statusCode: 400 };
   }
-  
+
 
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
