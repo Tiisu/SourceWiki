@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authApi, api } from './api';
+import { authApi, api, describeApiError, type FormErrors } from './api';
 import { toast } from 'sonner';
+
+export type AuthResult = { success: true } | ({ success: false } & FormErrors);
 
 export interface User {
   id: string;
@@ -17,9 +19,9 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<AuthResult>;
   logout: () => void;
-  register: (username: string, email: string, password: string, country: string) => Promise<boolean>;
+  register: (username: string, email: string, password: string, country: string) => Promise<AuthResult>;
   updateUser: (updates: Partial<User>) => void;
 }
 
@@ -47,22 +49,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<AuthResult> => {
     try {
       const response = await authApi.login(username, password);
-      
+
       if (response.success) {
         api.setTokens(response.accessToken, response.refreshToken);
         setUser(response.user);
         toast.success('Login successful!');
-        return true;
+        return { success: true };
       }
-      
-      toast.error('Invalid credentials');
-      return false;
+
+      return { success: false, message: 'Invalid credentials', fieldErrors: {} };
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Login failed');
-      return false;
+      return { success: false, ...describeApiError(error, 'Login failed') };
     }
   };
 
@@ -78,22 +78,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (username: string, email: string, password: string, country: string): Promise<boolean> => {
+  const register = async (
+    username: string,
+    email: string,
+    password: string,
+    country: string
+  ): Promise<AuthResult> => {
     try {
       const response = await authApi.register(username, email, password, country);
-      
+
       if (response.success) {
         api.setTokens(response.accessToken, response.refreshToken);
         setUser(response.user);
         toast.success('Registration successful!');
-        return true;
+        return { success: true };
       }
-      
-      toast.error('Registration failed');
-      return false;
+
+      return { success: false, message: 'Registration failed', fieldErrors: {} };
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Registration failed');
-      return false;
+      return { success: false, ...describeApiError(error, 'Registration failed') };
     }
   };
 

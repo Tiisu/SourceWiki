@@ -9,6 +9,53 @@ interface ApiResponse<T = any> {
   errors?: Array<{ field: string; message: string }>;
 }
 
+/**
+ * A failed API response. Keeps what the backend said about individual fields
+ * (`errors: [{ field, message }]`) so forms can show it next to the input.
+ */
+export class ApiError extends Error {
+  status: number;
+  errorCode?: string;
+  /** First message per field, e.g. { username: 'Username is required' } */
+  fieldErrors: Record<string, string>;
+
+  constructor(
+    message: string,
+    status: number,
+    errorCode?: string,
+    fieldErrors: Record<string, string> = {}
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.errorCode = errorCode;
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+const toFieldErrors = (errors: unknown): Record<string, string> => {
+  const fieldErrors: Record<string, string> = {};
+  if (!Array.isArray(errors)) return fieldErrors;
+
+  for (const error of errors) {
+    if (error?.field && error?.message && !(error.field in fieldErrors)) {
+      fieldErrors[error.field] = error.message;
+    }
+  }
+  return fieldErrors;
+};
+
+/** What a form needs to display a failure: one overall message plus per-field ones. */
+export interface FormErrors {
+  message: string;
+  fieldErrors: Record<string, string>;
+}
+
+export const describeApiError = (error: unknown, fallback: string): FormErrors => ({
+  message: error instanceof Error && error.message ? error.message : fallback,
+  fieldErrors: error instanceof ApiError ? { ...error.fieldErrors } : {},
+});
+
 class ApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
@@ -120,7 +167,12 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        throw new Error(data.message || `Request failed with status ${response.status}`);
+        throw new ApiError(
+          data.message || `Request failed with status ${response.status}`,
+          response.status,
+          data.errorCode,
+          toFieldErrors(data.errors)
+        );
       }
 
       return data;

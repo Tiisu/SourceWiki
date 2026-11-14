@@ -28,7 +28,9 @@ import {
   getCountryName,
   getStatusColor,
 } from '../lib/mock-data';
-import { submissionApi } from '../lib/api';
+import { describeApiError, submissionApi } from '../lib/api';
+import { CharacterCount } from '../components/form-helpers';
+import { LIMITS, validateNotes } from '../lib/validation';
 import { toast } from 'sonner';
 
 interface Submission {
@@ -86,6 +88,12 @@ export const AdminDashboard: React.FC = () => {
   const handleVerify = async (submission: Submission, status: 'approved' | 'rejected', credibility?: 'credible' | 'unreliable') => {
     if (!user) return;
 
+    const notesCheck = validateNotes(verificationNotes);
+    if (notesCheck !== true) {
+      toast.error(notesCheck);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await submissionApi.verify(
@@ -109,7 +117,7 @@ export const AdminDashboard: React.FC = () => {
         await loadSubmissions();
       }
     } catch (error) {
-      toast.error('Failed to verify submission');
+      toast.error(describeApiError(error, 'Failed to verify submission').message);
     } finally {
       setLoading(false);
       setSelectedSubmission(null);
@@ -449,13 +457,22 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm">Verification Notes (Optional)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm">Verification Notes (Optional)</label>
+                  <CharacterCount value={verificationNotes} max={LIMITS.notesMax} />
+                </div>
                 <Textarea
                   placeholder="Add notes about editorial standards, bias, verification status, etc."
                   value={verificationNotes}
                   onChange={(e) => setVerificationNotes(e.target.value)}
+                  aria-invalid={validateNotes(verificationNotes) !== true}
                   rows={4}
                 />
+                {validateNotes(verificationNotes) !== true && (
+                  <p className="text-destructive text-sm">
+                    {validateNotes(verificationNotes) as string}
+                  </p>
+                )}
               </div>
             </div>
           )}
