@@ -1,5 +1,7 @@
 # WikiSourceVerifier
 
+English | [Français](README.fr.md)
+
 A community-driven reference verification platform for Wikipedia editors and Wikimedia contributors.
 
 ## 🎯 Project Overview
