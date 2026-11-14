@@ -291,7 +291,7 @@ describe('Auth API Integration Tests', () => {
       expect(response.body.success).toBe(true);
 
       // Verify new password works
-      const updatedUser = await User.findById(user._id).select('+password');
+      const updatedUser = await User.scope('withPassword').findByPk(user._id);
       const isMatch = await updatedUser.comparePassword('newpassword123');
       expect(isMatch).toBe(true);
     });

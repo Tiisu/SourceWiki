@@ -16,9 +16,11 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
+  // env.js picks the test database before any app module loads
+  setupFiles: ['<rootDir>/tests/env.js'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   testTimeout: 30000,
-  maxWorkers: 1, // Run tests serially to avoid MongoDB connection issues
+  maxWorkers: 1, // Run serially: test files share one database when using MariaDB
   verbose: true
 };
 

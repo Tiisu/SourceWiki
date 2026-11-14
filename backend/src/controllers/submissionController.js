@@ -1,9 +1,23 @@
-import Submission from '../models/Submission.js';
+import { fn, col, literal } from 'sequelize';
+import Submission, { includeSubmitter, includeVerifier } from '../models/Submission.js';
 import User from '../models/User.js';
+import { paginate, searchAny } from '../models/helpers.js';
+import { countWhen } from '../models/queries.js';
 import AppError from '../utils/AppError.js';
 import { ErrorCodes } from '../utils/errorCodes.js';
-// 1. IMPORT THE EMAIL SERVICE
 import { sendEmail } from '../services/emailService.js';
+
+
+
+const listResponse = (res, { rows, count }, page, limit) =>
+  res.status(200).json({
+    success: true,
+    count: rows.length,
+    total: count,
+    page,
+    pages: Math.ceil(count / limit),
+    submissions: rows
+  });
 
 // @desc    Create new submission
 // @route   POST /api/submissions
@@ -25,19 +39,18 @@ export const createSubmission = async (req, res, next) => {
     });
 
     // Award points to user
-    await User.findByIdAndUpdate(req.user.id, {
-      $inc: { points: 10 }
-    });
+    await User.increment({ points: 10 }, { where: { id: req.user.id } });
 
-    // 2. IMPORTANT: Added 'email' to populate so we can send the notification
-    const populatedSubmission = await Submission.findById(submission._id)
-      .populate('submitter', 'username country email');
+    // Email is included so we can send the notification
+    const populatedSubmission = await Submission.findByPk(submission.id, {
+      include: [includeSubmitter(['username', 'country', 'email'])]
+    });
 
     // --- EMAIL NOTIFICATION LOGIC START ---
     try {
-      const submitterEmail = populatedSubmission.submitter.email;
-      const submitterName = populatedSubmission.submitter.username;
-      
+      const submitterEmail = populatedSubmission.submitterUser.email;
+      const submitterName = populatedSubmission.submitterUser.username;
+
       // Email A: Notify Submitter
       const submitterHtml = `
         <h3>Hello ${submitterName},</h3>
@@ -45,9 +58,8 @@ export const createSubmission = async (req, res, next) => {
         <p>It is now pending review by a verifier for <strong>${country}</strong>.</p>
         <p>Best,<br>WikiSourceVerifier Team</p>
       `;
-      
+
       // Email B: Notify Verifier
-      // Helper function to find the right email (defined at bottom of file)
       const verifierEmail = getVerifierEmail(country);
       const verifierHtml = `
         <h3>New Submission Pending Review</h3>
@@ -55,12 +67,11 @@ export const createSubmission = async (req, res, next) => {
         <p>Please log in to verify.</p>
       `;
 
-      // Send both emails (using Promise.allSettled so one failure doesn't stop the other)
+      // Send both emails (allSettled so one failure doesn't stop the other)
       await Promise.allSettled([
         sendEmail(submitterEmail, "Submission Received", submitterHtml),
         sendEmail(verifierEmail, `Action Required: New Submission for ${country}`, verifierHtml)
       ]);
-
     } catch (emailErr) {
       // Log error but don't fail the request
       console.error("Email notification failed:", emailErr);
@@ -81,39 +92,25 @@ export const createSubmission = async (req, res, next) => {
 // @access  Public
 export const getSubmissions = async (req, res, next) => {
   try {
-    const { country, category, status, page = 1, limit = 20, search } = req.query;
+    const { country, category, status, search } = req.query;
+    const { page, limit, offset } = paginate(req.query);
 
-    const query = {};
+    const where = {};
+    if (country) where.country = country;
+    if (category) where.category = category;
+    if (status) where.status = status;
+    if (search) Object.assign(where, searchAny(['title', 'publisher'], search));
 
-    if (country) query.country = country;
-    if (category) query.category = category;
-    if (status) query.status = status;
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { publisher: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const skip = (page - 1) * limit;
-
-    const submissions = await Submission.find(query)
-      .populate('submitter', 'username country')
-      .populate('verifier', 'username country')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Submission.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      count: submissions.length,
-      total,
-      page: parseInt(page),
-      pages: Math.ceil(total / limit),
-      submissions
+    const result = await Submission.findAndCountAll({
+      where,
+      include: [includeSubmitter(['username', 'country']), includeVerifier(['username', 'country'])],
+      order: [['createdAt', 'DESC']],
+      offset,
+      limit,
+      distinct: true
     });
+
+    listResponse(res, result, page, limit);
   } catch (error) {
     next(error);
   }
@@ -124,9 +121,12 @@ export const getSubmissions = async (req, res, next) => {
 // @access  Public
 export const getSubmission = async (req, res, next) => {
   try {
-    const submission = await Submission.findById(req.params.id)
-      .populate('submitter', 'username email country role points badges')
-      .populate('verifier', 'username country role');
+    const submission = await Submission.findByPk(req.params.id, {
+      include: [
+        includeSubmitter(['username', 'email', 'country', 'role', 'points', 'badges']),
+        includeVerifier(['username', 'country', 'role'])
+      ]
+    });
 
     if (!submission) {
       return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
@@ -146,25 +146,18 @@ export const getSubmission = async (req, res, next) => {
 // @access  Private
 export const getMySubmissions = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const skip = (page - 1) * limit;
+    const { page, limit, offset } = paginate(req.query);
 
-    const submissions = await Submission.find({ submitter: req.user.id })
-      .populate('verifier', 'username country')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Submission.countDocuments({ submitter: req.user.id });
-
-    res.status(200).json({
-      success: true,
-      count: submissions.length,
-      total,
-      page: parseInt(page),
-      pages: Math.ceil(total / limit),
-      submissions
+    const result = await Submission.findAndCountAll({
+      where: { submitter: req.user.id },
+      include: [includeVerifier(['username', 'country'])],
+      order: [['createdAt', 'DESC']],
+      offset,
+      limit,
+      distinct: true
     });
+
+    listResponse(res, result, page, limit);
   } catch (error) {
     next(error);
   }
@@ -175,14 +168,14 @@ export const getMySubmissions = async (req, res, next) => {
 // @access  Private
 export const updateSubmission = async (req, res, next) => {
   try {
-    let submission = await Submission.findById(req.params.id);
+    let submission = await Submission.findByPk(req.params.id);
 
     if (!submission) {
       return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     // Check if user is the submitter
-    if (submission.submitter.toString() !== req.user.id) {
+    if (String(submission.submitter) !== String(req.user.id)) {
       return next(new AppError('Not authorized to update this submission', 403, ErrorCodes.UNAUTHORIZED_ACCESS));
     }
 
@@ -192,12 +185,15 @@ export const updateSubmission = async (req, res, next) => {
     }
 
     const { title, publisher, wikipediaArticle, category } = req.body;
+    const updates = Object.fromEntries(
+      Object.entries({ title, publisher, wikipediaArticle, category }).filter(([, v]) => v !== undefined)
+    );
 
-    submission = await Submission.findByIdAndUpdate(
-      req.params.id,
-      { title, publisher, wikipediaArticle, category },
-      { new: true, runValidators: true }
-    ).populate('submitter', 'username country');
+    await submission.update(updates);
+
+    submission = await Submission.findByPk(submission.id, {
+      include: [includeSubmitter(['username', 'country'])]
+    });
 
     res.status(200).json({
       success: true,
@@ -213,18 +209,18 @@ export const updateSubmission = async (req, res, next) => {
 // @access  Private
 export const deleteSubmission = async (req, res, next) => {
   try {
-    const submission = await Submission.findById(req.params.id);
+    const submission = await Submission.findByPk(req.params.id);
 
     if (!submission) {
       return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
     }
 
     // Check if user is the submitter or admin
-    if (submission.submitter.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (String(submission.submitter) !== String(req.user.id) && req.user.role !== 'admin') {
       return next(new AppError('Not authorized to delete this submission', 403, ErrorCodes.UNAUTHORIZED_ACCESS));
     }
 
-    await submission.deleteOne();
+    await submission.destroy();
 
     res.status(200).json({
       success: true,
@@ -241,9 +237,8 @@ export const deleteSubmission = async (req, res, next) => {
 export const verifySubmission = async (req, res, next) => {
   try {
     const { status, credibility, verifierNotes } = req.body;
-    console.log('Verification request:', { status, credibility, verifierNotes });
 
-    let submission = await Submission.findById(req.params.id);
+    let submission = await Submission.findByPk(req.params.id);
 
     if (!submission) {
       return next(new AppError('Submission not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
@@ -266,24 +261,20 @@ export const verifySubmission = async (req, res, next) => {
 
     submission.verifier = req.user.id;
     submission.verifierNotes = verifierNotes;
-    submission.verifiedAt = Date.now();
+    submission.verifiedAt = new Date();
 
     await submission.save();
 
     if (status === 'approved') {
       const points = credibility === 'credible' ? 25 : 10;
-      await User.findByIdAndUpdate(submission.submitter, {
-        $inc: { points: points }
-      });
+      await User.increment({ points }, { where: { id: submission.submitter } });
     }
 
-    await User.findByIdAndUpdate(req.user.id, {
-      $inc: { points: 5 }
-    });
+    await User.increment({ points: 5 }, { where: { id: req.user.id } });
 
-    submission = await Submission.findById(submission._id)
-      .populate('submitter', 'username country')
-      .populate('verifier', 'username country');
+    submission = await Submission.findByPk(submission.id, {
+      include: [includeSubmitter(['username', 'country']), includeVerifier(['username', 'country'])]
+    });
 
     res.status(200).json({
       success: true,
@@ -299,31 +290,23 @@ export const verifySubmission = async (req, res, next) => {
 // @access  Private (verifier, admin)
 export const getPendingSubmissionsForCountry = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const skip = (page - 1) * limit;
+    const { page, limit, offset } = paginate(req.query);
 
-    let query = { status: 'pending' };
-    
+    const where = { status: 'pending' };
     if (req.user.role !== 'admin') {
-      query.country = req.user.country;
+      where.country = req.user.country;
     }
 
-    const submissions = await Submission.find(query)
-      .populate('submitter', 'username country')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Submission.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      count: submissions.length,
-      total,
-      page: parseInt(page),
-      pages: Math.ceil(total / limit),
-      submissions
+    const result = await Submission.findAndCountAll({
+      where,
+      include: [includeSubmitter(['username', 'country'])],
+      order: [['createdAt', 'DESC']],
+      offset,
+      limit,
+      distinct: true
     });
+
+    listResponse(res, result, page, limit);
   } catch (error) {
     next(error);
   }
@@ -335,35 +318,40 @@ export const getPendingSubmissionsForCountry = async (req, res, next) => {
 export const getSubmissionStats = async (req, res, next) => {
   try {
     const { country } = req.query;
-    const matchStage = country ? { country } : {};
+    const where = country ? { country } : {};
 
-    const stats = await Submission.aggregate([
-      { $match: matchStage },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: 1 },
-          pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
-          approved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
-          rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } },
-          primary: { $sum: { $cond: [{ $eq: ['$category', 'primary'] }, 1, 0] } },
-          secondary: { $sum: { $cond: [{ $eq: ['$category', 'secondary'] }, 1, 0] } },
-          unreliable: { $sum: { $cond: [{ $eq: ['$category', 'unreliable'] }, 1, 0] } }
-        }
-      }
-    ]);
+    const [totals] = await Submission.findAll({
+      where,
+      attributes: [
+        [fn('COUNT', col('id')), 'total'],
+        countWhen('status', 'pending'),
+        countWhen('status', 'approved'),
+        countWhen('status', 'rejected'),
+        countWhen('category', 'primary'),
+        countWhen('category', 'secondary'),
+        countWhen('category', 'unreliable')
+      ],
+      raw: true
+    });
 
-    const countryStats = await Submission.aggregate([
-      { $match: matchStage },
-      { $group: { _id: '$country', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
-    ]);
+    const topCountries = await Submission.findAll({
+      where,
+      attributes: ['country', [fn('COUNT', col('id')), 'count']],
+      group: ['country'],
+      order: [[literal('count'), 'DESC']],
+      limit: 10,
+      raw: true
+    });
+
+    const stats = Object.fromEntries(
+      ['total', 'pending', 'approved', 'rejected', 'primary', 'secondary', 'unreliable']
+        .map((key) => [key, Number(totals?.[key]) || 0])
+    );
 
     res.status(200).json({
       success: true,
-      stats: stats[0] || { total: 0, pending: 0, approved: 0, rejected: 0, primary: 0, secondary: 0, unreliable: 0 },
-      topCountries: countryStats
+      stats,
+      topCountries: topCountries.map(({ country: name, count }) => ({ _id: name, count: Number(count) }))
     });
   } catch (error) {
     next(error);
@@ -371,14 +359,12 @@ export const getSubmissionStats = async (req, res, next) => {
 };
 
 // Helper: Get Verifier Email based on Country
-// This uses the ENV variables you set up earlier
 const getVerifierEmail = (country) => {
-    // You can add more countries here as needed
-    const verifiers = {
-        'Ghana': process.env.GHANA_VERIFIER_EMAIL,
-        'Nigeria': process.env.NIGERIA_VERIFIER_EMAIL,
-    };
-    
-    // Return specific verifier or fallback to Admin Email (or a default)
-    return verifiers[country] || process.env.ADMIN_EMAIL || 'admin@wikisourceverifier.org';
+  const verifiers = {
+    'Ghana': process.env.GHANA_VERIFIER_EMAIL,
+    'Nigeria': process.env.NIGERIA_VERIFIER_EMAIL,
+  };
+
+  // Return specific verifier or fallback to Admin Email (or a default)
+  return verifiers[country] || process.env.ADMIN_EMAIL || 'admin@wikisourceverifier.org';
 };

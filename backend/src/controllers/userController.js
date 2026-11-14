@@ -1,72 +1,55 @@
 import User from '../models/User.js';
 import Submission from '../models/Submission.js';
+import { paginate, searchAny } from '../models/helpers.js';
+import { STATUS_COUNT_ATTRIBUTES, toStatusCounts } from '../models/queries.js';
 import AppError from '../utils/AppError.js';
 import { ErrorCodes } from '../utils/errorCodes.js';
+
+const notFound = (next) => next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
 
 // @desc    Get user profile
 // @route   GET /api/users/:id
 // @access  Public
 export const getUserProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findByPk(req.params.id);
 
-
-    if (!user) {
-      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
-    }
+    if (!user) return notFound(next);
 
     // Get user's submission stats
-    const submissionStats = await Submission.aggregate([
-      { $match: { submitter: user._id } },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: 1 },
-          approved: {
-            $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] }
-          },
-          pending: {
-            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
-          },
-          rejected: {
-            $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] }
-          }
-        }
-      }
-    ]);
-
-    const stats = submissionStats[0] || {
-      total: 0,
-      approved: 0,
-      pending: 0,
-      rejected: 0
-    };
+    const [row] = await Submission.findAll({
+      where: { submitter: user.id },
+      attributes: STATUS_COUNT_ATTRIBUTES,
+      raw: true
+    });
 
     res.status(200).json({
       success: true,
       user: user.getPublicProfile(),
-      stats
+      stats: toStatusCounts(row)
     });
   } catch (error) {
     next(error);
   }
 };
 
-
 // @desc    Get leaderboard
 // @route   GET /api/users/leaderboard
 // @access  Public
 export const getLeaderboard = async (req, res, next) => {
   try {
-    const { country, limit = 20 } = req.query;
+    const { country } = req.query;
+    const limit = parseInt(req.query.limit, 10) || 20;
 
-    const query = { isActive: true };
-    if (country) query.country = country;
+    const where = { isActive: true };
+    if (country) where.country = country;
 
-    const users = await User.find(query)
-      .select('username country role points badges createdAt')
-      .sort({ points: -1 })
-      .limit(parseInt(limit));
+    const users = await User.findAll({
+      where,
+      attributes: ['id', 'username', 'country', 'role', 'points', 'badges', 'createdAt'],
+      order: [['points', 'DESC']],
+      limit
+    });
 
     res.status(200).json({
       success: true,
@@ -85,20 +68,16 @@ export const awardBadge = async (req, res, next) => {
   try {
     const { name, icon } = req.body;
 
+    const user = await User.findByPk(req.params.id);
 
-    const user = await User.findById(req.params.id);
-
-    if (!user) {
-      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
-    }
+    if (!user) return notFound(next);
 
     // Check if badge already exists
-    const badgeExists = user.badges.some(badge => badge.name === name);
-    if (badgeExists) {
+    if (user.badges.some((badge) => badge.name === name)) {
       return next(new AppError('User already has this badge', 400, ErrorCodes.RESOURCE_ALREADY_EXISTS));
     }
 
-    user.badges.push({ name, icon });
+    user.badges = [...user.badges, { name, icon }];
     await user.save();
 
     res.status(200).json({
@@ -110,7 +89,6 @@ export const awardBadge = async (req, res, next) => {
   }
 };
 
-
 // @desc    Update user role (admin only)
 // @route   PUT /api/users/:id/role
 // @access  Private (admin)
@@ -118,20 +96,15 @@ export const updateUserRole = async (req, res, next) => {
   try {
     const { role } = req.body;
 
-
     if (!['contributor', 'verifier', 'admin'].includes(role)) {
       return next(new AppError('Invalid role', 400, ErrorCodes.INVALID_INPUT));
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { role },
-      { new: true, runValidators: true }
-    );
+    const user = await User.findByPk(req.params.id);
 
-    if (!user) {
-      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
-    }
+    if (!user) return notFound(next);
+
+    await user.update({ role });
 
     res.status(200).json({
       success: true,
@@ -142,41 +115,51 @@ export const updateUserRole = async (req, res, next) => {
   }
 };
 
-
 // @desc    Get all users (admin only)
 // @route   GET /api/users
 // @access  Private (admin)
 export const getUsers = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, role, country, search } = req.query;
+    const { role, country, search } = req.query;
+    const { page, limit, offset } = paginate(req.query);
 
-    const query = {};
-    if (role) query.role = role;
-    if (country) query.country = country;
-    if (search) {
-      query.$or = [
-        { username: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-    }
+    const where = {};
+    if (role) where.role = role;
+    if (country) where.country = country;
+    if (search) Object.assign(where, searchAny(['username', 'email'], search));
 
-    const skip = (page - 1) * limit;
-
-    const users = await User.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await User.countDocuments(query);
+    const { rows: users, count: total } = await User.findAndCountAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      offset,
+      limit
+    });
 
     res.status(200).json({
       success: true,
       count: users.length,
       total,
-      page: parseInt(page),
+      page,
       pages: Math.ceil(total / limit),
       users
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const setActive = (isActive, message) => async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+
+    if (!user) return notFound(next);
+
+    await user.update({ isActive });
+
+    res.status(200).json({
+      success: true,
+      message,
+      user: user.getPublicProfile()
     });
   } catch (error) {
     next(error);
@@ -186,53 +169,9 @@ export const getUsers = async (req, res, next) => {
 // @desc    Deactivate user (admin only)
 // @route   PUT /api/users/:id/deactivate
 // @access  Private (admin)
-export const deactivateUser = async (req, res, next) => {
-  try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
-
-
-    if (!user) {
-      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'User deactivated successfully',
-      user: user.getPublicProfile()
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
+export const deactivateUser = setActive(false, 'User deactivated successfully');
 
 // @desc    Activate user (admin only)
 // @route   PUT /api/users/:id/activate
 // @access  Private (admin)
-export const activateUser = async (req, res, next) => {
-  try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { isActive: true },
-      { new: true }
-    );
-
-
-    if (!user) {
-      return next(new AppError('User not found', 404, ErrorCodes.RESOURCE_NOT_FOUND));
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'User activated successfully',
-      user: user.getPublicProfile()
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
+export const activateUser = setActive(true, 'User activated successfully');

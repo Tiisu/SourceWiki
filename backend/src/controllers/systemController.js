@@ -1,16 +1,18 @@
-
+import { Op } from 'sequelize';
+import { sequelize } from '../config/database.js';
 import User from '../models/User.js';
-import Submission from '../models/Submission.js';
+import Submission, { includeSubmitter, includeVerifier } from '../models/Submission.js';
 import CountryStats from '../models/CountryStats.js';
-import AppError from '../utils/AppError.js';
+import { paginate } from '../models/helpers.js';
 import { ErrorCodes } from '../utils/errorCodes.js';
 
-class SystemController {
+const DAY_MS = 24 * 60 * 60 * 1000;
+const daysAgo = (days) => new Date(Date.now() - days * DAY_MS);
 
+class SystemController {
   // ============================================================================
   // SYSTEM MONITORING & MAINTENANCE
   // ============================================================================
-
 
   static async getSystemHealth(req, res, next) {
     try {
@@ -23,52 +25,47 @@ class SystemController {
 
       // Check database connectivity
       try {
-        await User.findOne().limit(1);
+        await sequelize.authenticate();
       } catch (error) {
         healthData.status = 'unhealthy';
         healthData.database = 'disconnected';
         healthData.issues.push('Database connection failed');
       }
 
-      // Check for pending submissions older than 30 days
-      const oldPendingCount = await Submission.countDocuments({
-        status: 'pending',
-        createdAt: { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      // Pending submissions older than 30 days
+      const oldPendingCount = await Submission.count({
+        where: { status: 'pending', createdAt: { [Op.lt]: daysAgo(30) } }
       });
 
       if (oldPendingCount > 0) {
         healthData.issues.push(`${oldPendingCount} submissions pending for over 30 days`);
       }
 
-      // Check for countries without verifiers
-      const countriesWithoutVerifiers = await CountryStats.countDocuments({
-        'statistics.activeVerifiers': 0,
-        'statistics.totalSubmissions': { $gt: 0 }
+      // Countries with submissions but no verifiers
+      const countriesWithoutVerifiers = await CountryStats.count({
+        where: { activeVerifiers: 0, totalSubmissions: { [Op.gt]: 0 } }
       });
 
       if (countriesWithoutVerifiers > 0) {
         healthData.issues.push(`${countriesWithoutVerifiers} countries with submissions but no verifiers`);
       }
 
-      // Check for inactive admins
-      const activeAdmins = await User.countDocuments({
-        role: 'admin',
-        isActive: true,
-        updatedAt: { $gt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      // Admins active in the last 30 days
+      const activeAdmins = await User.count({
+        where: { role: 'admin', isActive: true, updatedAt: { [Op.gt]: daysAgo(30) } }
       });
 
       if (activeAdmins === 0) {
         healthData.issues.push('No active admins in the last 30 days');
       }
 
-      if (healthData.issues.length > 0) {
+      if (healthData.issues.length > 0 && healthData.status === 'healthy') {
         healthData.status = 'warning';
       }
 
       res.json(healthData);
     } catch (error) {
       console.error('Health check error:', error);
-      // For health check, we might want to return a specific structure even on error
       res.status(503).json({
         status: 'unhealthy',
         timestamp: new Date(),
@@ -80,41 +77,38 @@ class SystemController {
 
   static async getSystemLogs(req, res, next) {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 50;
-      const skip = (page - 1) * limit;
+      const { page, limit, offset } = paginate(req.query, 50);
 
-      // Build date filter
-      const dateFilter = {};
-      if (req.query.startDate) dateFilter.$gte = new Date(req.query.startDate);
-      if (req.query.endDate) dateFilter.$lte = new Date(req.query.endDate);
+      const where = {};
+      const createdAt = {};
+      if (req.query.startDate) createdAt[Op.gte] = new Date(req.query.startDate);
+      if (req.query.endDate) createdAt[Op.lte] = new Date(req.query.endDate);
+      if (Reflect.ownKeys(createdAt).length > 0) where.createdAt = createdAt;
 
-      // Get recent activities from submissions (as example logs)
-      const filter = {};
-      if (Object.keys(dateFilter).length > 0) {
-        filter.createdAt = dateFilter;
-      }
+      // Recent submission activity, presented as logs
+      const recentActivities = await Submission.findAll({
+        where,
+        attributes: ['id', 'title', 'status', 'createdAt', 'verifiedAt', 'country', 'submitter', 'verifier'],
+        include: [
+          includeSubmitter(['username', 'email', 'country']),
+          includeVerifier(['username', 'email', 'country'])
+        ],
+        order: [['createdAt', 'DESC']],
+        offset,
+        limit
+      });
 
-      const recentActivities = await Submission.find(filter)
-        .populate('submitter', 'username email country')
-        .populate('verifier', 'username email country')
-        .select('title status createdAt verifiedAt country')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit);
-
-      // Transform to log format
-      const logs = recentActivities.map(submission => ({
+      const logs = recentActivities.map((submission) => ({
         timestamp: submission.createdAt,
         level: 'info',
         action: 'submission_created',
         details: {
-          submissionId: submission._id,
+          submissionId: submission.id,
           title: submission.title,
           country: submission.country,
           status: submission.status,
-          submitter: submission.submitter?.username,
-          verifier: submission.verifier?.username,
+          submitter: submission.submitterUser?.username,
+          verifier: submission.verifierUser?.username,
           verifiedAt: submission.verifiedAt
         }
       }));
@@ -143,15 +137,15 @@ class SystemController {
         totalCountries,
         activeCountries
       ] = await Promise.all([
-        User.countDocuments(),
-        User.countDocuments({ isActive: true }),
-        Submission.countDocuments(),
-        Submission.countDocuments({ status: 'pending' }),
-        CountryStats.countDocuments(),
-        CountryStats.countDocuments({ 'statistics.totalSubmissions': { $gt: 0 } })
+        User.count(),
+        User.count({ where: { isActive: true } }),
+        Submission.count(),
+        Submission.count({ where: { status: 'pending' } }),
+        CountryStats.count(),
+        CountryStats.count({ where: { totalSubmissions: { [Op.gt]: 0 } } })
       ]);
 
-      const stats = {
+      res.json({
         users: {
           total: totalUsers,
           active: activeUsers,
@@ -172,9 +166,7 @@ class SystemController {
           memory: process.memoryUsage(),
           timestamp: new Date()
         }
-      };
-
-      res.json(stats);
+      });
     } catch (error) {
       next(error);
     }
@@ -188,26 +180,27 @@ class SystemController {
       };
 
       // Update all country statistics
-      const countries = await CountryStats.find();
+      const countries = await CountryStats.findAll();
       for (const country of countries) {
         await country.updateStats();
         results.operations.push(`Updated stats for ${country.countryName}`);
       }
 
-      // Clean up old refresh tokens
-      const tokenCleanup = await User.updateMany(
-        {},
-        {
-          $pull: {
-            refreshTokens: {
-              createdAt: { $lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
-            }
-          }
+      // Clean up refresh tokens older than 7 days
+      const cutoff = daysAgo(7);
+      const users = await User.findAll({ attributes: ['id', 'refreshTokens'] });
+      let cleaned = 0;
+      for (const user of users) {
+        const kept = user.refreshTokens.filter((t) => new Date(t.createdAt) >= cutoff);
+        if (kept.length !== user.refreshTokens.length) {
+          user.refreshTokens = kept;
+          await user.save({ fields: ['refreshTokens'] });
+          cleaned += 1;
         }
-      );
+      }
 
-      if (tokenCleanup.modifiedCount > 0) {
-        results.operations.push(`Cleaned up refresh tokens for ${tokenCleanup.modifiedCount} users`);
+      if (cleaned > 0) {
+        results.operations.push(`Cleaned up refresh tokens for ${cleaned} users`);
       }
 
       res.json({
@@ -221,16 +214,13 @@ class SystemController {
 
   static async backupDatabase(req, res, next) {
     try {
-      // This would typically trigger a backup process
-      // For now, we'll just return a mock response
-      const backupInfo = {
+      // Placeholder only: no backup is actually performed.
+      res.json({
         timestamp: new Date(),
         status: 'initiated',
         message: 'Database backup process started',
         backupId: `backup_${Date.now()}`
-      };
-
-      res.json(backupInfo);
+      });
     } catch (error) {
       next(error);
     }

@@ -1,8 +1,10 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
@@ -15,17 +17,20 @@ import adminRoutes from './routes/adminRoutes.js';
 import countryRoutes from './routes/countryRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
 import reportsRoutes from './routes/reportsRoutes.js';
-//importing the config file where all the environment variables are stored and loaded
 import config from './config/config.js';
-
-
-
 import crypto from 'crypto';
 
-// Connect to database
-connectDB();
+// Connect to the database (and create missing tables) before serving requests
+await connectDB();
 
 const app = express();
+
+// Behind a reverse proxy (e.g. Toolforge), set TRUST_PROXY (usually "1") so
+// req.ip and secure cookies use the X-Forwarded-* headers.
+if (process.env.TRUST_PROXY) {
+  const value = process.env.TRUST_PROXY;
+  app.set('trust proxy', /^\d+$/.test(value) ? parseInt(value, 10) : value === 'true' || value);
+}
 
 // Request ID middleware
 app.use((req, res, next) => {
@@ -43,7 +48,8 @@ app.use(
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
+      // The frontend reads country data from Wikidata
+      connectSrc: ["'self'", 'https://www.wikidata.org'],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"]
     }
@@ -76,26 +82,9 @@ app.use(cors({
 
 // Body parser
 app.use(express.json());
-app.use((req, res, next) => {
-  console.log('--------------------------------');
-  console.log('DEBUG CHECK:');
-  console.log('Content-Type:', req.get('Content-Type'));
-  console.log('Req Body:', req.body);
-  console.log('--------------------------------');
-  next();
-});
 app.use(express.urlencoded({ extended: true }));
 // Cookie parser (needed before auth middleware)
 app.use(cookieParser());
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: 'Too many requests from this IP, please try again later.'
-});
-
 // Optional authentication middleware (populates req.user if token exists)
 // This must run before rate limiting so user info is available
 app.use(optionalAuth);
@@ -128,15 +117,26 @@ app.use('/api/countries', countryRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/reports', reportsRoutes);
 
-// Welcome route
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'WikiSource Verifier API',
-    version: '1.0.0',
-    documentation: '/api/docs'
+// Serve the built frontend (frontend/dist) when it exists, so the whole app
+// runs as one web service. Unknown non-API paths return index.html so
+// client-side routes like /directory work on refresh.
+const frontendDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../frontend/dist');
+
+if (fs.existsSync(path.join(frontendDist, 'index.html'))) {
+  app.use(express.static(frontendDist, { index: false }));
+  app.get(/^\/(?!api\/|api$|health$).*/, (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
   });
-});
+} else {
+  // API-only mode (e.g. local backend development)
+  app.get('/', (req, res) => {
+    res.json({
+      success: true,
+      message: 'WikiSource Verifier API',
+      version: '1.0.0'
+    });
+  });
+}
 
 // Error handler (must be last)
 app.use(errorHandler);
@@ -152,7 +152,7 @@ app.use((req, res) => {
 const PORT = process.env.PORT || config.port || 5000;
 
 const server = app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`Server running in ${config.nodeEnv} mode on port ${PORT}`);
 });
 
 // Handle unhandled promise rejections

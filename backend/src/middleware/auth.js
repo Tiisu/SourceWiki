@@ -26,7 +26,7 @@ export const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Get user from token
-      req.user = await User.findById(decoded.id).select('-password');
+      req.user = await User.findByPk(decoded.id);
 
       if (!req.user) {
         return next(new AppError('User not found', 401, ErrorCodes.AUTHENTICATION_FAILED));
@@ -67,7 +67,7 @@ export const optionalAuth = async (req, res, next) => {
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = await User.findById(decoded.id).select('-password');
+        req.user = await User.findByPk(decoded.id);
       } catch (error) {
         // Token invalid, but continue without user
         req.user = null;

@@ -56,5 +56,9 @@
     server: {
       port: 3000,
       open: true,
+      // Forward API calls to the local backend so the app can use same-origin /api
+      proxy: {
+        '/api': 'http://localhost:5000',
+      },
     },
   });

@@ -276,7 +276,7 @@ export const SubmissionForm: React.FC = () => {
                   <RadioGroupItem value="primary" id="cat-primary" className="mt-1" />
                   <Label htmlFor="cat-primary" className="cursor-pointer flex-1">
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-xl">ðŸ“—</span>
+                      <span className="text-xl">📗</span>
                       <span>Primary Source</span>
                     </div>
                     <p className="text-sm text-gray-500">
@@ -289,7 +289,7 @@ export const SubmissionForm: React.FC = () => {
                   <RadioGroupItem value="secondary" id="cat-secondary" className="mt-1" />
                   <Label htmlFor="cat-secondary" className="cursor-pointer flex-1">
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-xl">ðŸ“˜</span>
+                      <span className="text-xl">📘</span>
                       <span>Secondary Source</span>
                     </div>
                     <p className="text-sm text-gray-500">
@@ -302,7 +302,7 @@ export const SubmissionForm: React.FC = () => {
                   <RadioGroupItem value="unreliable" id="cat-unreliable" className="mt-1" />
                   <Label htmlFor="cat-unreliable" className="cursor-pointer flex-1">
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-xl">ðŸš«</span>
+                      <span className="text-xl">🚫</span>
                       <span>Potentially Unreliable</span>
                     </div>
                     <p className="text-sm text-gray-500">

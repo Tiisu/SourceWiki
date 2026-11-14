@@ -1,180 +1,145 @@
-import mongoose from 'mongoose';
+import { DataTypes, Model, fn, col } from 'sequelize';
+import { sequelize } from '../config/database.js';
+import Submission from './Submission.js';
+import User from './User.js';
+import { idField, jsonField, timestampFields, withIds } from './helpers.js';
 
-const countryStatsSchema = new mongoose.Schema({
+// Statistics are real columns (so they can be sorted and filtered) but are
+// exposed as a nested `statistics` object, as the Mongo API did.
+export const STAT_FIELDS = [
+  'totalSubmissions',
+  'verifiedSources',
+  'unreliableSources',
+  'pendingReview',
+  'activeContributors',
+  'activeVerifiers'
+];
+
+const ACTIVITY_LIMIT = 50;
+
+class CountryStats extends Model {
+  // Mongo-style alias used throughout the codebase
+  get _id() {
+    return this.id;
+  }
+
+  static async getOrCreate(countryCode, countryName) {
+    const code = countryCode.toUpperCase();
+    let stats = await this.findOne({ where: { countryCode: code } });
+    if (!stats) {
+      stats = await this.create({ countryCode: code, countryName });
+    }
+    return stats;
+  }
+
+  async updateStats() {
+    const rows = await Submission.findAll({
+      where: { country: this.countryCode },
+      attributes: ['status', [fn('COUNT', col('id')), 'count']],
+      group: ['status'],
+      raw: true
+    });
+
+    const stats = {
+      totalSubmissions: 0,
+      verifiedSources: 0,
+      unreliableSources: 0,
+      pendingReview: 0
+    };
+
+    for (const { status, count } of rows) {
+      const n = Number(count);
+      if (status === 'approved') stats.verifiedSources = n;
+      if (status === 'rejected') stats.unreliableSources = n;
+      if (status === 'pending') stats.pendingReview = n;
+      stats.totalSubmissions += n;
+    }
+
+    [stats.activeContributors, stats.activeVerifiers] = await Promise.all([
+      User.count({ where: { country: this.countryCode, role: 'contributor', isActive: true } }),
+      User.count({ where: { country: this.countryCode, role: 'verifier', isActive: true } })
+    ]);
+
+    this.statistics = stats;
+    this.lastUpdated = new Date();
+    return this.save();
+  }
+
+  addActivity(type, userId, description, submissionId = null) {
+    this.recentActivity = [
+      { type, userId, submissionId, description, timestamp: new Date().toISOString() },
+      ...this.recentActivity
+    ].slice(0, ACTIVITY_LIMIT);
+    return this.save();
+  }
+
+  toJSON() {
+    const values = { ...this.get() };
+    for (const field of STAT_FIELDS) delete values[field];
+    return withIds(values);
+  }
+}
+
+const statColumns = Object.fromEntries(STAT_FIELDS.map((field) => [field, {
+  type: DataTypes.INTEGER,
+  allowNull: false,
+  defaultValue: 0
+}]));
+
+CountryStats.init({
+  ...idField,
   countryCode: {
-    type: String,
-    required: true,
-    length: 2,
-    uppercase: true
+    type: DataTypes.STRING(2),
+    allowNull: false,
+    unique: true,
+    set(value) {
+      this.setDataValue('countryCode', typeof value === 'string' ? value.trim().toUpperCase() : value);
+    },
+    validate: {
+      notNull: { msg: 'Country code is required' },
+      len: { args: [2, 2], msg: 'Country code must be 2 letters' }
+    }
   },
   countryName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  statistics: {
-    totalSubmissions: { type: Number, default: 0 },
-    verifiedSources: { type: Number, default: 0 },
-    unreliableSources: { type: Number, default: 0 },
-    pendingReview: { type: Number, default: 0 },
-    activeContributors: { type: Number, default: 0 },
-    activeVerifiers: { type: Number, default: 0 }
-  },
-  topContributors: [{
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    set(value) {
+      this.setDataValue('countryName', typeof value === 'string' ? value.trim() : value);
     },
-    username: String,
-    points: Number,
-    verifiedSubmissions: Number
-  }],
-  topVerifiers: [{
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    username: String,
-    reviewsCompleted: Number,
-    accuracy: Number // percentage of reviews that align with community consensus
-  }],
-  recentActivity: [{
-    type: {
-      type: String,
-      enum: ['submission', 'verification', 'new_contributor', 'new_verifier']
-    },
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    submissionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Submission'
-    },
-    timestamp: {
-      type: Date,
-      default: Date.now
-    },
-    description: String
-  }],
-  verifiers: [{
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    assignedDate: {
-      type: Date,
-      default: Date.now
-    },
-    specializations: [{
-      type: String,
-      trim: true // e.g., "Academic journals", "Government sources", "News media"
-    }],
-    isActive: {
-      type: Boolean,
-      default: true
+    validate: {
+      notNull: { msg: 'Country name is required' }
     }
-  }],
-  lastUpdated: {
-    type: Date,
-    default: Date.now
-  }
-}, {
-  timestamps: true
-});
-
-// Indexes
-countryStatsSchema.index({ countryCode: 1 }, { unique: true });
-countryStatsSchema.index({ 'statistics.totalSubmissions': -1 });
-countryStatsSchema.index({ 'statistics.verifiedSources': -1 });
-
-// Update statistics
-countryStatsSchema.methods.updateStats = async function() {
-  const Submission = mongoose.model('Submission');
-  const User = mongoose.model('User');
-  
-  // Get submission counts
-  const stats = await Submission.aggregate([
-    { $match: { country: this.countryCode } },
-    {
-      $group: {
-        _id: '$status',
-        count: { $sum: 1 }
+  },
+  ...statColumns,
+  // Nested view of the stat columns. Accepts partial objects on create/set.
+  statistics: {
+    type: DataTypes.VIRTUAL,
+    get() {
+      return Object.fromEntries(STAT_FIELDS.map((field) => [field, this.getDataValue(field) ?? 0]));
+    },
+    set(values) {
+      for (const field of STAT_FIELDS) {
+        if (values && values[field] !== undefined) this.set(field, values[field]);
       }
     }
-  ]);
-
-  // Reset stats
-  this.statistics.totalSubmissions = 0;
-  this.statistics.verifiedSources = 0;
-  this.statistics.unreliableSources = 0;
-  this.statistics.pendingReview = 0;
-
-  // Update from aggregation
-  stats.forEach(stat => {
-    switch(stat._id) {
-      case 'approved':
-        this.statistics.verifiedSources = stat.count;
-        break;
-      case 'rejected':
-        this.statistics.unreliableSources = stat.count;
-        break;
-      case 'pending':
-        this.statistics.pendingReview = stat.count;
-        break;
-    }
-    this.statistics.totalSubmissions += stat.count;
-  });
-
-  // Update user counts
-  this.statistics.activeContributors = await User.countDocuments({
-    country: this.countryCode,
-    role: 'contributor',
-    isActive: true
-  });
-
-  this.statistics.activeVerifiers = await User.countDocuments({
-    country: this.countryCode,
-    role: 'verifier',
-    isActive: true
-  });
-
-  this.lastUpdated = new Date();
-  return this.save();
-};
-
-// Static method to get or create country stats
-countryStatsSchema.statics.getOrCreate = async function(countryCode, countryName) {
-  let stats = await this.findOne({ countryCode });
-  if (!stats) {
-    stats = new this({
-      countryCode: countryCode.toUpperCase(),
-      countryName
-    });
-    await stats.save();
-  }
-  return stats;
-};
-
-// Add activity to recent activity feed
-countryStatsSchema.methods.addActivity = function(type, userId, description, submissionId = null) {
-  this.recentActivity.unshift({
-    type,
-    userId,
-    submissionId,
-    description,
-    timestamp: new Date()
-  });
-
-  // Keep only last 50 activities
-  if (this.recentActivity.length > 50) {
-    this.recentActivity = this.recentActivity.slice(0, 50);
-  }
-
-  return this.save();
-};
-
-const CountryStats = mongoose.model('CountryStats', countryStatsSchema);
+  },
+  topContributors: jsonField('topContributors', []),
+  topVerifiers: jsonField('topVerifiers', []),
+  recentActivity: jsonField('recentActivity', []),
+  verifiers: jsonField('verifiers', []),
+  lastUpdated: {
+    type: DataTypes.DATE(3),
+    defaultValue: DataTypes.NOW
+  },
+  ...timestampFields
+}, {
+  sequelize,
+  modelName: 'CountryStats',
+  tableName: 'country_stats',
+  indexes: [
+    { fields: ['totalSubmissions'] },
+    { fields: ['verifiedSources'] }
+  ]
+});
 
 export default CountryStats;
