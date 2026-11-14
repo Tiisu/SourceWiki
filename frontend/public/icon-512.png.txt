@@ -1,2 +1,0 @@
-This is a placeholder for icon-512.png
-You should replace this with an actual 512x512 PNG icon for your PWA.
