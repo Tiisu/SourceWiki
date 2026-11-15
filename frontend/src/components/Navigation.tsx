@@ -49,7 +49,7 @@ export const Navigation: React.FC = () => {
               to="/"
               className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
             >
-              <BookOpen className="h-8 w-8" />
+              <BookOpen className="h-8 w-8" aria-hidden="true" />
               <div className="flex flex-col items-start">
                 <span className="font-semibold">WikiSourceVerifier</span>
                 <span className="text-xs text-gray-500">
@@ -64,7 +64,7 @@ export const Navigation: React.FC = () => {
                 onClick={() => navigate("/directory")}
                 className="flex items-center space-x-2"
               >
-                <Search className="h-4 w-4" />
+                <Search className="h-4 w-4" aria-hidden="true" />
                 <span>Directory</span>
               </Button>
 
@@ -75,7 +75,7 @@ export const Navigation: React.FC = () => {
                     onClick={() => navigate("/submit")}
                     className="flex items-center space-x-2"
                   >
-                    <Upload className="h-4 w-4" />
+                    <Upload className="h-4 w-4" aria-hidden="true" />
                     <span>Submit</span>
                   </Button>
 
@@ -85,7 +85,7 @@ export const Navigation: React.FC = () => {
                       onClick={() => navigate("/admin")}
                       className="flex items-center space-x-2"
                     >
-                      <Shield className="h-4 w-4" />
+                      <Shield className="h-4 w-4" aria-hidden="true" />
                       <span>Admin</span>
                     </Button>
                   )}
@@ -98,8 +98,14 @@ export const Navigation: React.FC = () => {
           <div className="md:hidden flex items-center space-x-4">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" className="h-10 w-10">
-                  <Menu className="h-6 w-6" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10"
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-6 w-6" aria-hidden="true" />
                 </Button>
               </SheetTrigger>
 
@@ -113,7 +119,7 @@ export const Navigation: React.FC = () => {
                       setOpen(false);
                     }}
                   >
-                    <Search className="mr-2 h-5 w-5" />
+                    <Search className="mr-2 h-5 w-5" aria-hidden="true" />
                     Directory
                   </Button>
 
@@ -127,7 +133,7 @@ export const Navigation: React.FC = () => {
                           setOpen(false);
                         }}
                       >
-                        <Upload className="mr-2 h-5 w-5" />
+                        <Upload className="mr-2 h-5 w-5" aria-hidden="true" />
                         Submit
                       </Button>
 
@@ -140,7 +146,7 @@ export const Navigation: React.FC = () => {
                             setOpen(false);
                           }}
                         >
-                          <Shield className="mr-2 h-5 w-5" />
+                          <Shield className="mr-2 h-5 w-5" aria-hidden="true" />
                           Admin
                         </Button>
                       )}
@@ -159,7 +165,7 @@ export const Navigation: React.FC = () => {
                     variant="ghost"
                     className="flex items-center space-x-2"
                   >
-                    <User className="h-4 w-4" />
+                    <User className="h-4 w-4" aria-hidden="true" />
                     <span className="hidden sm:inline">{user.username}</span>
                     <Badge variant="secondary" className="ml-2">
                       {user.points}
@@ -177,16 +183,16 @@ export const Navigation: React.FC = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate("/profile")}>
-                    <User className="h-4 w-4 mr-2" />
+                    <User className="h-4 w-4 mr-2" aria-hidden="true" />
                     Profile
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/profile")}>
-                    <Award className="h-4 w-4 mr-2" />
+                    <Award className="h-4 w-4 mr-2" aria-hidden="true" />
                     Badges ({user.badges.length})
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout}>
-                    <LogOut className="h-4 w-4 mr-2" />
+                    <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
                     Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -196,7 +202,7 @@ export const Navigation: React.FC = () => {
                 onClick={() => navigate("/auth")}
                 className="flex items-center space-x-2"
               >
-                <LogIn className="h-4 w-4" />
+                <LogIn className="h-4 w-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Login</span>
               </Button>
             )}

@@ -32,7 +32,7 @@ export const CountryNavigation: React.FC = () => {
         <div className="flex items-center justify-between h-12">
           {/* African Countries - Primary Focus */}
           <div className="flex items-center space-x-1">
-            <Globe className="h-4 w-4 text-gray-600 mr-2" />
+            <Globe className="h-4 w-4 text-gray-600 mr-2" aria-hidden="true" />
             <span className="text-sm font-medium text-gray-700 mr-3">African Countries:</span>
             <div className="hidden lg:flex items-center space-x-1 overflow-x-auto">
               {africanCountries.map((country) => (
@@ -45,7 +45,7 @@ export const CountryNavigation: React.FC = () => {
                     selectedCountry === country.code ? 'bg-blue-100 text-blue-800' : ''
                   }`}
                 >
-                  <span>{country.flag}</span>
+                  <span aria-hidden="true">{country.flag}</span>
                   <span>{country.name}</span>
                 </Button>
               ))}
@@ -56,9 +56,9 @@ export const CountryNavigation: React.FC = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="flex items-center space-x-2">
-                <Globe className="h-4 w-4" />
+                <Globe className="h-4 w-4" aria-hidden="true" />
                 <span>All Countries</span>
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-3 w-3" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 max-h-96 overflow-y-auto">
@@ -116,7 +116,7 @@ export const CountryNavigation: React.FC = () => {
                 selectedCountry === country.code ? 'bg-blue-100 text-blue-800' : ''
               }`}
             >
-              <span>{country.flag}</span>
+              <span aria-hidden="true">{country.flag}</span>
               <span>{country.name}</span>
             </Button>
           ))}
