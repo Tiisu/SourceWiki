@@ -6,6 +6,7 @@ import { countWhen } from '../models/queries.js';
 import AppError from '../utils/AppError.js';
 import { ErrorCodes } from '../utils/errorCodes.js';
 import { sendEmail } from '../services/emailService.js';
+import { awardEarnedBadgesSafely } from '../services/gamificationService.js';
 
 
 
@@ -40,6 +41,7 @@ export const createSubmission = async (req, res, next) => {
 
     // Award points to user
     await User.increment({ points: 10 }, { where: { id: req.user.id } });
+    const newBadges = await awardEarnedBadgesSafely(req.user.id);
 
     // Email is included so we can send the notification
     const populatedSubmission = await Submission.findByPk(submission.id, {
@@ -80,7 +82,8 @@ export const createSubmission = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      submission: populatedSubmission
+      submission: populatedSubmission,
+      newBadges
     });
   } catch (error) {
     next(error);
@@ -272,13 +275,18 @@ export const verifySubmission = async (req, res, next) => {
 
     await User.increment({ points: 5 }, { where: { id: req.user.id } });
 
+    // Badges for the submitter (points / credible count) and the verifier (review count)
+    await awardEarnedBadgesSafely(submission.submitter);
+    const newBadges = await awardEarnedBadgesSafely(req.user.id);
+
     submission = await Submission.findByPk(submission.id, {
       include: [includeSubmitter(['username', 'country']), includeVerifier(['username', 'country'])]
     });
 
     res.status(200).json({
       success: true,
-      submission
+      submission,
+      newBadges
     });
   } catch (error) {
     next(error);
