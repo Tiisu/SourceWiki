@@ -28,6 +28,7 @@ import {
   Target,
   Activity,
   Loader2,
+  Globe,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
 import { submissionApi } from '../lib/api';
@@ -122,6 +123,7 @@ export const UserProfile = () => {
   const safeUser = {
     username: user?.username ?? 'User',
     email: user?.email ?? '',
+    wikimediaUsername: user?.wikimediaUsername ?? '',
     role: user?.role ?? 'user',
     country: user?.country ?? '',
     joinDate: user?.joinDate ?? new Date().toISOString(),
@@ -213,9 +215,16 @@ useEffect(() => {
               <p className="capitalize text-blue-100">{safeUser.role}</p>
 
               <div className="flex gap-4 mt-4 text-sm flex-wrap">
-                <span className="flex items-center gap-1">
-                  <Mail className="h-4 w-4" /> {safeUser.email}
-                </span>
+                               {safeUser.email && (
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-4 w-4" /> {safeUser.email}
+                  </span>
+                )}
+                {safeUser.wikimediaUsername && (
+                  <span className="flex items-center gap-1">
+                    <Globe className="h-4 w-4" /> Wikimedia: {safeUser.wikimediaUsername}
+                  </span>
+                )}
                 <span className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
                   {getCountryFlag(safeUser.country)}{' '}
