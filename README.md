@@ -374,3 +374,54 @@ A searchable and filterable list of verified sources:
 - Encourages cross-country collaboration for credible referencing
 - Supports smaller language Wikipedias with localized reference vetting
 - Creates an open dataset of verified credible references per country
+
+## Log in with Wikimedia (OAuth 2.0)
+
+Contributors can sign in with their Wikimedia account. The first login creates a
+SourceWiki account linked to their Wikimedia user ID; later logins reuse it.
+
+### 1. Register a consumer
+
+1. Log in to Meta-Wiki and open
+   https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/propose/oauth2
+2. Fill in a name and description.
+3. Leave **"This consumer is for use only by [your username]" unchecked**
+   (owner-only consumers use a different grant and cannot do this login flow).
+4. Set the callback URL to `http://localhost:5000/api/auth/wikimedia/callback`
+   (it is matched exactly).
+5. Keep **"Client is confidential"** checked.
+6. Choose **User identity verification only**, and the authorization code grant.
+7. Submit. Copy the client application key and secret immediately; the secret is shown once.
+
+A new consumer works immediately for the account that registered it. Other users
+can log in only after a Wikimedia administrator approves the consumer.
+
+### 2. Set the environment variables
+
+In `backend/.env`, with no quotes or angle brackets:
+
+```
+WIKIMEDIA_CLIENT_ID=<client application key>
+WIKIMEDIA_CLIENT_SECRET=<client application secret>
+WIKIMEDIA_REDIRECT_URI=http://localhost:5000/api/auth/wikimedia/callback
+```
+
+Restart the backend after changing `.env`. The secret is only used by the backend
+and is never sent to the frontend.
+
+### 3. Existing databases
+
+`sequelize.sync()` does not alter existing tables. If your `users` table already
+exists, add the new columns and relax the local-only constraints (untested SQL,
+please try it on a copy first):
+
+```sql
+ALTER TABLE users
+  ADD COLUMN wikimediaId VARCHAR(50) NULL UNIQUE,
+  ADD COLUMN wikimediaUsername VARCHAR(255) NULL,
+  MODIFY password VARCHAR(255) NULL,
+  MODIFY email VARCHAR(255) NULL,
+  MODIFY country VARCHAR(100) NULL;
+```
+
+Fresh databases and SQLite need no migration.
