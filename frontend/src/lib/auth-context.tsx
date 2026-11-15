@@ -7,6 +7,7 @@ export interface User {
   username: string;
   email: string;
   country: string;
+  wikimediaUsername?: string | null;
   role: 'contributor' | 'verifier' | 'admin';
   points: number;
   badges: Array<{ name: string; icon: string; earnedAt: string }>;
@@ -21,6 +22,8 @@ interface AuthContextType {
   logout: () => void;
   register: (username: string, email: string, password: string, country: string) => Promise<boolean>;
   updateUser: (updates: Partial<User>) => void;
+  loginWithWikimedia: () => void;
+
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,15 +34,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Check if user is logged in on mount
-    const checkAuth = async () => {
-      if (api.isAuthenticated()) {
-        try {
-          const response = await authApi.getMe();
-          setUser(response.user);
-        } catch (error) {
-          // Token invalid, clear auth
-          api.clearAuth();
-        }
+        const checkAuth = async () => {
+      try {
+        // Ask the backend who we are. This works for password logins (token in localStorage)
+        // and Wikimedia logins (token only in cookies).
+        const response = await authApi.getMe();
+        setUser(response.user);
+      } catch (error) {
+        // Not logged in, or token invalid
+        api.clearAuth();
       }
       setLoading(false);
     };
@@ -121,8 +124,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register, updateUser }}>
+  const loginWithWikimedia = () => {
+    // Clear old password-login tokens so they can't override the new cookies
+    api.clearAuth();
+    // Full-page navigation: the browser goes to Wikimedia and comes back to /auth
+    window.location.href = authApi.wikimediaLoginUrl;
+  };
+
+   return (
+    <AuthContext.Provider value={{ user, loading, login, logout, register, updateUser, loginWithWikimedia }}>
       {children}
     </AuthContext.Provider>
   );

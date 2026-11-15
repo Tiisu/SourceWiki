@@ -190,6 +190,9 @@ export const authApi = {
 
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/auth/password', { currentPassword, newPassword }),
+
+  // Not a fetch call: the browser navigates here, goes to Wikimedia, then comes back to /auth
+  wikimediaLoginUrl: `${API_URL}/auth/wikimedia`,
 };
 
 // Submission API
