@@ -20,12 +20,13 @@ class User extends Model {
     return bcrypt.compare(candidatePassword, hash);
   }
 
-  getPublicProfile() {
+    getPublicProfile() {
     return {
       id: this.id,
       username: this.username,
       email: this.email,
       country: this.country,
+      wikimediaUsername: this.wikimediaUsername,
       role: this.role,
       points: this.points,
       badges: this.badges,
@@ -57,33 +58,39 @@ User.init({
       len: { args: [3, 30], msg: 'Username must be between 3 and 30 characters' }
     }
   },
-  email: {
+   email: {
     type: DataTypes.STRING(255),
-    allowNull: false,
+    allowNull: true, // Wikimedia accounts may have no email; local accounts are checked below
     unique: true,
     set(value) {
       this.setDataValue('email', typeof value === 'string' ? value.trim().toLowerCase() : value);
     },
     validate: {
-      notNull: { msg: 'Email is required' },
       is: { args: /^\S+@\S+\.\S+$/, msg: 'Please provide a valid email' }
     }
   },
   password: {
     type: DataTypes.STRING(255),
-    allowNull: false,
+    allowNull: true, // null for Wikimedia accounts
     validate: {
-      notNull: { msg: 'Password is required' },
       len: { args: [6, 255], msg: 'Password must be at least 6 characters' }
     }
   },
   country: {
     type: DataTypes.STRING(100),
-    allowNull: false,
+    allowNull: true, // Wikimedia users choose it after first login
     validate: {
-      notNull: { msg: 'Country is required' },
       notEmpty: { msg: 'Country is required' }
     }
+  },
+  wikimediaId: {
+    type: DataTypes.STRING(50), // the "sub" (central user id), stored as text
+    allowNull: true,
+    unique: true
+  },
+  wikimediaUsername: {
+    type: DataTypes.STRING(255),
+    allowNull: true
   },
   role: {
     type: DataTypes.STRING(20),
@@ -110,6 +117,15 @@ User.init({
   sequelize,
   modelName: 'User',
   tableName: 'users',
+    validate: {
+    // Local accounts need email, password and country. Wikimedia accounts don't.
+    localAccountFieldsRequired() {
+      if (!this.isNewRecord || this.wikimediaId) return;
+      if (!this.getDataValue('email')) throw new Error('Email is required');
+      if (!this.getDataValue('password')) throw new Error('Password is required');
+      if (!this.getDataValue('country')) throw new Error('Country is required');
+    }
+  },
   defaultScope: {
     attributes: { exclude: ['password'] }
   },

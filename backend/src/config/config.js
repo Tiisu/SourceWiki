@@ -25,6 +25,13 @@ const config = {
   // Development defaults; override in production via environment variables
   jwtSecret: process.env.JWT_SECRET || 'dev_jwt_secret_change_me',
   jwtExpire: process.env.JWT_EXPIRE || '30d',
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  wikimedia: {
+    clientId: process.env.WIKIMEDIA_CLIENT_ID,
+    clientSecret: process.env.WIKIMEDIA_CLIENT_SECRET,
+    redirectUri: process.env.WIKIMEDIA_REDIRECT_URI || 'http://localhost:5000/api/auth/wikimedia/callback',
+    baseUrl: 'https://meta.wikimedia.org'
+  },
 };
 
 export default config;
