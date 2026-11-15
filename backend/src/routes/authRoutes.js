@@ -6,7 +6,9 @@ import {
   getMe,
   refreshToken,
   updateProfile,
-  changePassword
+  changePassword,
+  wikimediaLogin,
+  wikimediaCallback
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { registerValidation, loginValidation, validate } from '../middleware/validator.js';
@@ -18,6 +20,8 @@ router.post('/login', loginValidation, validate, login);
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 router.post('/refresh', refreshToken);
+router.get('/wikimedia', wikimediaLogin);
+router.get('/wikimedia/callback', wikimediaCallback);
 router.put('/profile', protect, updateProfile);
 router.put('/password', protect, changePassword);
 

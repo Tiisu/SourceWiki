@@ -11,3 +11,4 @@ coverage/
 backend/.env
 node_modules
 backend/node_modules
+dev.sqlite
