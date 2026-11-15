@@ -314,15 +314,15 @@ npm run dev
 
 - [API Documentation](backend/API_DOCUMENTATION.md)
 - [Frontend Guidelines](frontend/src/guidelines/Guidelines.md)
-- [Contributing Guidelines](#) (TODO)
+- [Contributing Guidelines](CONTRIBUTING.md)
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for complete details on:
+- How to find and claim tasks on the [SourceWiki Phabricator board](https://phabricator.wikimedia.org/tag/sourcewiki/)
+- Branch naming (`T<TaskID>-...`) and commit message conventions
+- Setting up the frontend, backend, and running tests locally
+- Opening a Pull Request and the code review process
 
 ## 📄 License
 
